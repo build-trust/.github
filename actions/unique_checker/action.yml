@@ -1,0 +1,61 @@
+# To use this workflow we need to
+# - Set the Ockam repo to $GITHUB_WORKSPACE/ockam
+# - Fulfill required inputs
+name: Unique Runner
+description: Check if commit SHA to be run is unique
+inputs:
+  csv_filename:
+    description: "CSV file name"
+    required: true
+  sha_column:
+    description: "Column where SHA is located in CSV file"
+    required: true
+  path:
+    description: "Path to compare git diff"
+    required: true
+outputs:
+  commit_already_built:
+    description: "Confirms if HEAD commit of Ockam repo has any unique change to build upon"
+    value: ${{ steps.unique_result.outputs.commit_already_built }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: command -v csvtool &> /dev/null || { echo "csvtool is not installed.  Installing."; sudo apt update; sudo apt install csvtool; }
+
+    - shell: bash
+      run: |
+        # Check if action is a cron job
+        sha=${{ github.event.inputs.commit_sha }}
+        echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
+
+        if [[ ! -z $sha ]]; then
+          echo "A workflow dispatch was started"
+          echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
+        fi
+
+    - shell: bash
+      working-directory: ockam
+      if: env.COMMIT_ALREADY_BUILT == 0
+      run: |
+        recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} $GITHUB_WORKSPACE/artifacts/${{ inputs.csv_filename }}"))
+
+        for commit in ${recently_built_commits[@]:1}; do
+          echo "Checking commit $commit"
+          # Check if specified commit in csv is valid.
+          if git rev-parse --verify $commit; then
+            # We check if any commit has recently built the dockerfile.
+            if git diff $commit --quiet --name-status -- ${{ inputs.path }}; then
+              echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
+              echo "Commit $commit already built the docker file"
+              exit 0;
+            fi
+          fi
+        done
+
+        echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
+
+    - shell: bash
+      id: unique_result
+      run: echo "::set-output name=commit_already_built::${COMMIT_ALREADY_BUILT}"

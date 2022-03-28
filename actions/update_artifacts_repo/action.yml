@@ -1,0 +1,28 @@
+# To use this workflow we need to
+# - Set the Artifacts repo to $GITHUB_WORKSPACE/artifacts
+# - Fulfill required inputs
+name: Artifact Repo Update
+description: Updates Artifacts Repo With Updated CSV
+inputs:
+  csv_filename:
+    description: "CSV file name"
+    required: true
+  message:
+    description: "Message to update CSV file with"
+    required: true
+  name:
+    description: "Name of author"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      working-directory: artifacts
+      run: |
+        echo ${{ inputs.message }} >> ${{ inputs.csv_filename }}
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git commit -m "update ${{ inputs.name }} csv by ${{ github.actor }} $(date +'%b %d %Y %T')" -a
+        git pull --rebase
+        git push

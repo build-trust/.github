@@ -1,0 +1,58 @@
+name: Slack Notification
+description: Slack notification to the Ockam Slack group
+inputs:
+  message:
+    description: "Slack message"
+    required: true
+  slack_oauth:
+    description: "Slack secret"
+    required: true
+  slack_channel_id:
+    description: "Slack channel ID to send message"
+    default: CCNG6NEQL
+  slack_thread_id:
+    description: "Slack thread ID"
+    default: ""
+outputs:
+  thread_id:
+    description: "Slack chat thread ID"
+    value: ${{ steps.slack_notifier.outputs.thread_id }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: slack_notifier
+      run: |
+        thread_id='${{ inputs.slack_thread_id }}'
+
+        echo '${{ inputs.message }}'
+
+        json_string=$( jq --null-input \
+            --arg text "${{ inputs.message }}" \
+            --arg channel "${{ inputs.slack_channel_id }}" \
+            --arg thread_ts "$thread_id" \
+            '{"text": $text, "channel": $channel, "thread_ts": $thread_ts}')
+
+        jq -r '.' <<< $json_string
+
+        response=$(curl -d "$json_string" \
+         -H "Authorization: Bearer ${{ inputs.slack_oauth }}" \
+         -H "Content-Type: application/json" \
+         -X POST https://slack.com/api/chat.postMessage)
+
+        echo "$response"
+
+        # Ensure message was sent
+        if [ $(eval "echo '$response' | jq '.ok' ") != true ]; then
+          echo "error sending slack message"
+          exit 1
+        fi
+
+        # Return thread ID as an output if slack_thread_id input was not provided
+        if [[ -z $thread_id ]]; then
+          thread_id=$(eval "echo '$response' | jq '.ts' ")
+          echo "Thread ID is $thread_id"
+          echo ::set-output name=thread_id::$thread_id
+        fi
+
+      shell: bash
