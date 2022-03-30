@@ -56,6 +56,21 @@ runs:
 
         echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
 
+    - if: ${{ env.COMMIT_ALREADY_BUILT != 1 }}
+      uses: actions/github-script@b82abb9b6002dd6f64b36cae983f5be4b7138fae
+      with:
+        script: |
+          console.log('Cancelling ...');
+          github.rest.actions.cancelWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId
+          })
+
+    - shell: bash
+      run: sleep 60
+      if: ${{ env.COMMIT_ALREADY_BUILT != 1 }}
+
     - shell: bash
       id: unique_result
       run: echo "::set-output name=commit_already_built::${COMMIT_ALREADY_BUILT}"
