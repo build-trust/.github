@@ -1,0 +1,18 @@
+name: Cancel Workflow
+description: Cancel A Running Workflow
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@b82abb9b6002dd6f64b36cae983f5be4b7138fae
+      with:
+        script: |
+          console.log('Cancelling ...');
+          github.rest.actions.cancelWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId
+          })
+
+    - shell: bash
+      run: sleep 60
