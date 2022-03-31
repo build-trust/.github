@@ -4,7 +4,7 @@
 name: Unique Runner
 description: Check if commit SHA to be run is unique
 inputs:
-  csv_filename:
+  csv_filepath:
     description: "CSV file name"
     required: true
   sha_column:
@@ -39,7 +39,7 @@ runs:
       working-directory: ockam
       if: env.COMMIT_ALREADY_BUILT == 0
       run: |
-        recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} $GITHUB_WORKSPACE/artifacts/${{ inputs.csv_filename }}"))
+        recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} ${{ inputs.csv_filepath }}"))
 
         for commit in ${recently_built_commits[@]:1}; do
           echo "Checking commit $commit"
@@ -55,21 +55,6 @@ runs:
         done
 
         echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
-
-    - if: ${{ env.COMMIT_ALREADY_BUILT != 1 }}
-      uses: actions/github-script@b82abb9b6002dd6f64b36cae983f5be4b7138fae
-      with:
-        script: |
-          console.log('Cancelling ...');
-          github.rest.actions.cancelWorkflowRun({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            run_id: context.runId
-          })
-
-    - shell: bash
-      run: sleep 60
-      if: ${{ env.COMMIT_ALREADY_BUILT != 1 }}
 
     - shell: bash
       id: unique_result
