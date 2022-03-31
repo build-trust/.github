@@ -31,7 +31,7 @@ runs:
             --arg text "${{ inputs.message }}" \
             --arg channel "${{ inputs.slack_channel_id }}" \
             --arg thread_ts "$thread_id" \
-            '{"text": $text, "channel": $channel, "thread_ts": $thread_ts}')
+            '{"text": $text, "channel": $channel, "thread_ts": $thread_ts, "reply_broadcast": "true"}')
 
         jq -r '.' <<< $json_string
 
