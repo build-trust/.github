@@ -23,15 +23,22 @@ runs:
   steps:
     - id: slack_notifier
       run: |
-        thread_id='${{ inputs.slack_thread_id }}'
+        thread_id="${{ inputs.slack_thread_id }}"
 
         echo '${{ inputs.message }}'
 
-        json_string=$( jq --null-input \
+        if [[ ! -z $thread_id ]]; then
+          json_string=$( jq --null-input \
             --arg text "${{ inputs.message }}" \
             --arg channel "${{ inputs.slack_channel_id }}" \
             --arg thread_ts "$thread_id" \
             '{"text": $text, "channel": $channel, "thread_ts": $thread_ts, "reply_broadcast": "true"}')
+        else
+          json_string=$( jq --null-input \
+            --arg text "${{ inputs.message }}" \
+            --arg channel "${{ inputs.slack_channel_id }}" \
+            '{"text": $text, "channel": $channel}')
+        fi
 
         jq -r '.' <<< $json_string
 
