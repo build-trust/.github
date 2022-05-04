@@ -1,0 +1,19 @@
+name: Get Docker Image Digest
+description: Get Docker Image Digest
+inputs:
+  image_name:
+    description: "Image name"
+    required: true
+outputs:
+  image_digest:
+    description: "Image digest"
+    value: ${{ steps.image_digest.outputs.digest }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      id: image_digest
+      run: |
+        digest=$(docker images --no-trunc --quiet ${{ inputs.image_name }})
+        echo "::set-output name=digest::$digest"
