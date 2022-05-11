@@ -1,0 +1,25 @@
+name: Verify Image Signature
+description: Verify Image Signature
+inputs:
+  cosign_pub_key:
+    description: "Cosign public key"
+    required: true
+  image:
+    description: "Docker image"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: sigstore/cosign-installer@536b37ec5d5b543420bdfd9b744c5965bd4d8730
+
+    - shell: bash
+      env:
+        PUB_KEY: '${{ inputs.cosign_pub_key }}'
+      run: |
+        if cosign verify --key env://PUB_KEY ${{ inputs.image }}; then
+          echo "Signature verified"
+        else
+          echo "Invalid signature"
+          exit 1
+        fi
