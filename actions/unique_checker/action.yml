@@ -41,16 +41,21 @@ runs:
       run: |
         recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} ${{ inputs.csv_filepath }}"))
 
+        paths=( ${{ inputs.path }} )
         for commit in ${recently_built_commits[@]:1}; do
           echo "Checking commit $commit"
           # Check if specified commit in csv is valid.
           if git rev-parse --verify $commit; then
+
             # We check if any commit has recently built the dockerfile.
-            if git diff $commit --quiet --name-status -- ${{ inputs.path }}; then
-              echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
-              echo "Commit $commit already built the docker file"
-              exit 0;
-            fi
+            for path in ${paths[@]}; do
+              echo "Checking $path path for git diff"
+              if git diff $commit --quiet --name-status -- $path; then
+                echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
+                echo "Commit $commit already built the docker file"
+                exit 0
+              fi
+            done
           fi
         done
 
