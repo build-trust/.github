@@ -39,27 +39,34 @@ runs:
       working-directory: ockam
       if: env.COMMIT_ALREADY_BUILT == 0
       run: |
+        set -x
         recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} ${{ inputs.csv_filepath }}"))
 
         paths=( ${{ inputs.path }} )
-        for commit in ${recently_built_commits[@]:1}; do
-          echo "Checking commit $commit"
-          # Check if specified commit in csv is valid.
-          if git rev-parse --verify $commit; then
 
-            # We check if any commit has recently built the dockerfile.
-            for path in ${paths[@]}; do
-              echo "Checking $path path for git diff"
+        for path in ${paths[@]}; do
+          commit_unique=false
+          for commit in ${recently_built_commits[@]:1}; do
+            echo "Checking commit $commit"
+            # Check if specified commit in csv is valid.
+            if git rev-parse --verify $commit; then
               if git diff $commit --quiet --name-status -- $path; then
-                echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
-                echo "Commit $commit already built the docker file"
-                exit 0
+                commit_unique=false
+                echo "commit already built by $path"
+                break
               fi
-            done
+              commit_unique=true
+            fi
+          done
+
+          if $commit_unique; then
+            echo "$path made changes CI isn't aware of"
+            echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
+            exit 0
           fi
         done
 
-        echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
+        echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
 
     - shell: bash
       id: unique_result
