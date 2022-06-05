@@ -1,0 +1,67 @@
+name: Ockam Tag Unique Checker
+description: Action To Check If Workflow Has Ran A Specified Ockam Tag Release
+inputs:
+  tag:
+    description: "Ockam tag"
+    required: true
+
+outputs:
+  tag_name:
+    description: "Ockam Full Tag Release Name"
+    value: ${{ steps.runner.outputs.tag_name }}
+  unique:
+    description: "Indicates If Runner Is Unique"
+    value: ${{ steps.runner.outputs.unique }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      id: runner
+      run: |
+        set -x
+        tag_name='${{ github.event.inputs.tag }}'
+
+        if [[ -z $tag_name ]]; then
+          tag_name=$(curl --silent "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r .tag_name)
+          if [[ $tag_name != *"ockam_v"* ]]; then
+            echo "Invalid tag name, exiting workflow"
+            echo ::set-output name=unique::false
+            exit 0
+          fi
+
+          find cron_log.csv
+
+          # Ensure tag name doesn't exist in cron log
+          if cat cron_log.csv | grep $tag_name; then
+            echo ::set-output name=unique::false
+          else
+            echo ::set-output name=unique::true
+            echo ::set-output name=tag_name::$tag_name
+            echo "cron_job,$(date +'%b %d %Y %T'),$tag_name" >> cron_log.csv
+          fi
+
+        else
+          response=$(curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/build-trust/ockam/releases/tags/$tag_name | jq -r .tag_name)
+          if [[ $response != $tag_name ]]; then
+            echo "Tag name $tag_name does not exist"
+            exit 1
+          fi
+
+          echo ::set-output name=unique::true
+          echo ::set-output name=tag_name::${{ github.event.inputs.tag }}
+          echo "${{ github.actor }},$(date +'%b %d %Y %T'),${{ github.event.inputs.tag }}" >> cron_log.csv
+        fi
+
+    - if: ${{ steps.runner.outputs.unique == 'false' }}
+      uses: build-trust/.github/actions/cancel_workflow@custom-actions
+
+    - if: ${{ steps.runner.outputs.unique == 'true' }}
+      shell: bash
+      run: |
+        git config --global user.email "bot@ockam.io"
+        git config --global user.name "Ockam Bot"
+
+        git add cron_log.csv
+        git commit -m "Add ${{ steps.runner.outputs.tag_name }} to cron_log"
+        git push
