@@ -1,0 +1,39 @@
+name: Sign Image Workflow
+description: Sign A Docker Image
+
+inputs:
+  gpg_private_key:
+    description: "GPG Private Key"
+    required: true
+  gpg_password:
+    description: "GPG Password"
+    required: true
+  gpg_name:
+    description: "GPG Name"
+    required: true
+  gpg_email:
+    description: "GPG Email"
+    required: true
+
+outputs:
+  fingerprint:
+    description: "GPG Fingerprint"
+    value: ${{ steps.import_gpg.outputs.fingerprint }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      id: import_gpg
+      run: |
+        echo -e "${{ inputs.gpg_private_key }}" | gpg --import --batch --no-tty
+        echo "hello world" > temp.txt
+        gpg --detach-sig --yes -v --output=/dev/null --pinentry-mode loopback --passphrase "${{ inputs.gpg_password }}" temp.txt
+        rm temp.txt
+
+        fingerprint=$(gpg --with-colons --list-keys | awk -F: '/^pub/ { print $5 }')
+        echo "::set-output name=fingerprint::$fingerprint"
+
+        git config --global user.email "${{ inputs.gpg_email }}"
+        git config --global user.name "${{ inputs.gpg_name }}"
+        git config --global user.signingkey "${fingerprint}"
