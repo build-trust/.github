@@ -1,6 +1,53 @@
-Thank you for your interest in contributing to the Ockam open source projects.
+# Contributing to Ockam on GitHub
 
-We have several documents on [Ockam.io](https://www.ockam.io/) that will help to guide you.
+Thank you for taking time to contribute to [Ockam](github.com/build-trust/ockam).
 
-You can find Ockam's library of contributing guides here:
-[https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING](https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING)
+We want you to have a great experience making your first contribution.
+
+This contribution could be anything from a small fix to a typo in our
+documentation or a full feature.
+[Tell us](github.com/build-trust/ockam/discussions/1081) what you
+enjoy working on and we would love to help!
+
+If you would like to contribute, but don't know where to start, checkout the
+issues that are labeled
+[`good first issue`](https://github.com/build-trust/ockam/contribute)
+or
+[`help wanted`](github.com/ockam-network/ockam/issues?q=is%3Aissue+is%3Aopen++label%3A%22help+wanted%22).
+You can contribute to our documentation and code in Rust, Elixir, Github
+Actions, Docker, Gradle etc.
+
+If you have any other questions about contributing, please ask them on this
+[discussion thread](github.com/build-trust/ockam/discussions/1081)
+
+## Code of Conduct
+
+We strive to keep the Ockam community an open and welcoming environment.
+Please read and follow our [Community Code of Conduct][CODE_OF_CONDUCT.md].
+
+## Get help
+
+If you have any questions or need help integrating Ockam into your application
+please ask on [Github Discussions](https://github.com/build-trust/ockam/discussions)
+or send us an email at [hello@ockam.io](mailto:hello@ockam.io).
+
+## Report a bug
+
+If you find a bug in the source code, you can help us by
+[submitting an issue](https://github.com/build-trust/ockam/issues/new/choose)
+or, even better, a [pull request](#send_a_pull_request) with a fix.
+
+Before you submit a new issue please
+[search the archive](https://github.com/build-trust/ockam/issues?q=is%3Aissue+)
+to see if your issue has already been reported. Avoiding duplicate issues helps
+us focus our time on fixing issues and adding new features.
+
+## Request a new feature
+
+If you think of a new feature that would make Ockam better for everyone, please
+[start a discussion](https://github.com/build-trust/ockam/discussions/new) to
+propose the idea.
+
+## Helpful References
+
+* [How to contribute to open source](https://opensource.guide/how-to-contribute/)
