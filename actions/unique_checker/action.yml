@@ -45,7 +45,7 @@ runs:
         paths=( ${{ inputs.path }} )
 
         for path in ${paths[@]}; do
-          commit_unique=false
+          commit_unique=true
           for commit in ${recently_built_commits[@]:1}; do
             echo "Checking commit $commit"
             # Check if specified commit in csv is valid.
