@@ -55,7 +55,7 @@ propose the idea.
 * All commits in a Pull Request must be [signed](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) and Verified by Github.
 * All commits in a Pull Request must follow the Ockam [commit message convention](#commit-messages).
 * All authors of all commits in a Pull Request must abide by the Ockam Community [Code of Conduct](CODE_OF_CONDUCT.md).
-* All authors of all commits in a Pull Request must accept the Ockam [Contributor License Agreement](https://github.com/build-trust/ockam-contributors/blob/main/CLA.md) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the build-trust/ockam-contributors](https://github.com/build-trust/ockam-contributors) repository.
+* All authors of all commits in a Pull Request must accept the Ockam [Contributor License Agreement](https://github.com/build-trust/ockam-contributors/blob/main/CLA.md) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the [build-trust/ockam-contributors](https://github.com/build-trust/ockam-contributors) repository.
 * We follow a linear commit history in our git repositories, a pull request cannot contain merge commits. To apply upstream changes to a branch, please rebase it to the base branch.
 
 ### Commit Messages
