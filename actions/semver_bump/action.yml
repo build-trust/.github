@@ -1,0 +1,70 @@
+name: Cancel Workflow
+description: Cancel A Running Workflow
+
+inputs:
+  package_version_api_url:
+    description: "URL to access package version"
+    required: true
+  bump:
+    description: "Version to bump to, patch, minor, and major"
+    required: true
+  github_token:
+    description: "Version to bump to, patch, minor, and major"
+    required: true
+
+outputs:
+  updated_version:
+    description: "Updated version that image will be bumped to"
+    value: ${{ steps.version.outputs.NEW_VERSION }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: version
+      shell: bash
+      env:
+        CURL_HEADER: "'Accept: application/vnd.github.v3+json'"
+        CURL_URL: "${{ inputs.package_version_api_url }}"
+        BUMP: "${{ inputs.bump }}"
+      run: |
+        set -o xtrace
+        response=$(curl --silent -u build-trust:${{ secrets.GITHUB_TOKEN }} -H $CURL_HEADER $CURL_URL)
+
+        # Check if package ever exists.
+        if message=$(echo "$response" | jq -r '.message'); then
+          echo "$message"
+          if [[ $message == "Package not found." ]]; then
+            echo "Package is to be tagged 0.0.0"
+            CURRENT_VERSION="0.0.0"
+          fi
+        else
+          versions=$(echo "$response" | jq '.[].metadata.container.tags' | jq -n '[inputs|.[]]')
+          # We loop through the list of arrays to find which is the recently published
+          # package. Since packages are ALWAYS incremented when published, and array list
+          # are returned per incremented ID, we can rely on returned order to get latest version. 
+          versions_length=$(jq '. | length' <<< $versions)
+          for (( c=0; c<$versions_length; c++ )); do
+            version=$(jq -r ".[$c]" <<< $versions)
+            if [[ $version != *".sig"* && $version != "latest" ]]; then
+              CURRENT_VERSION="$version"
+              break
+            fi
+          done
+        fi
+
+        if [[ -z $CURRENT_VERSION ]]; then
+          echo "Error getting latest version in list"
+          echo "$versions"
+          exit 1
+        fi
+
+        if [[ ! -z $BUMP ]]; then
+          echo "Bumping version $CURRENT_VERSION as ${BUMP} specified in workflow dispatch"
+          version=$(semver bump ${BUMP} ${CURRENT_VERSION})
+          echo "::set-output name=NEW_VERSION::$version"
+          exit 0;
+        fi
+
+        echo "Setting BUMP version to patch as job is a cron-job"
+        version=$(semver bump patch ${CURRENT_VERSION})
+        echo "::set-output name=NEW_VERSION::$version"
