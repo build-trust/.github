@@ -7,6 +7,7 @@ inputs:
     required: true
   bump:
     description: "Version to bump to, patch, minor, and major"
+    default: minor
     required: true
   github_token:
     description: "Github Token"
