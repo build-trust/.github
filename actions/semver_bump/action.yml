@@ -9,7 +9,7 @@ inputs:
     description: "Version to bump to, patch, minor, and major"
     required: true
   github_token:
-    description: "Version to bump to, patch, minor, and major"
+    description: "Github Token"
     required: true
 
 outputs:
@@ -20,6 +20,19 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Clone fsaintjacques/semver-tool
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      with:
+        repository: fsaintjacques/semver-tool
+        ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0
+        path: semver
+
+    - name: Install fsaintjacques/semver-tool
+      id: semver
+      run: |
+        set -o xtrace
+        install semver/src/semver /usr/local/bin/
+
     - id: version
       shell: bash
       env:
