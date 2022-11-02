@@ -58,6 +58,11 @@ propose the idea.
 * All authors of all commits in a Pull Request must accept the Ockam [Contributor License Agreement](https://github.com/build-trust/ockam-contributors/blob/main/CLA.md) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the [build-trust/ockam-contributors](https://github.com/build-trust/ockam-contributors) repository.
 * We follow a linear commit history in our git repositories, a pull request cannot contain merge commits. To apply upstream changes to a branch, please rebase it to the base branch.
 
+### Branch names
+
+We follow the `username/change` format for branch names, for example `metaclips/upgrade_elixir_version` or `hairyhum/abac-errors`.
+There is no strict requirement to the `change` section as long as it doesn't contain `/` and uses ASCII.
+
 ### Commit Messages
 
 Each commit message consists of a header, a body and a footer. The header includes a type, a scope and a subject:
