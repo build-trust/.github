@@ -21,14 +21,13 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Clone fsaintjacques/semver-tool
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       with:
         repository: fsaintjacques/semver-tool
         ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0
         path: semver
 
-    - name: Install fsaintjacques/semver-tool
+    - shell: bash
       id: semver
       run: |
         set -o xtrace
@@ -42,7 +41,7 @@ runs:
         BUMP: "${{ inputs.bump }}"
       run: |
         set -o xtrace
-        response=$(curl --silent -u build-trust:${{ secrets.GITHUB_TOKEN }} -H $CURL_HEADER $CURL_URL)
+        response=$(curl --silent -u build-trust:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL)
 
         # Check if package ever exists.
         if message=$(echo "$response" | jq -r '.message'); then
