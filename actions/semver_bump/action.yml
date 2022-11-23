@@ -21,7 +21,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
       with:
         repository: fsaintjacques/semver-tool
         ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0
@@ -74,10 +74,10 @@ runs:
         if [[ ! -z $BUMP ]]; then
           echo "Bumping version $CURRENT_VERSION as ${BUMP} specified in workflow dispatch"
           version=$(semver bump ${BUMP} ${CURRENT_VERSION})
-          echo "::set-output name=NEW_VERSION::$version"
+          echo "NEW_VERSION=$version" >> $GITHUB_OUTPUT
           exit 0;
         fi
 
         echo "Setting BUMP version to patch as job is a cron-job"
         version=$(semver bump patch ${CURRENT_VERSION})
-        echo "::set-output name=NEW_VERSION::$version"
+        echo "NEW_VERSION=$version" >> $GITHUB_OUTPUT

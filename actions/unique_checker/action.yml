@@ -70,4 +70,4 @@ runs:
 
     - shell: bash
       id: unique_result
-      run: echo "::set-output name=commit_already_built::${COMMIT_ALREADY_BUILT}"
+      run: echo "commit_already_built=${COMMIT_ALREADY_BUILT}" >> $GITHUB_OUTPUT

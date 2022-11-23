@@ -59,7 +59,7 @@ runs:
         if [[ -z $thread_id ]]; then
           thread_id=$(eval "echo '$response' | jq '.ts' ")
           echo "Thread ID is $thread_id"
-          echo ::set-output name=thread_id::$thread_id
+          echo "thread_id=$thread_id" >> $GITHUB_OUTPUT
         fi
 
       shell: bash

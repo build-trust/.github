@@ -32,7 +32,7 @@ runs:
         rm temp.txt
 
         fingerprint=$(gpg --with-colons --list-keys | awk -F: '/^pub/ { print $5 }')
-        echo "::set-output name=fingerprint::$fingerprint"
+        echo "fingerprint=$fingerprint" >> $GITHUB_OUTPUT
 
         git config --global user.email "${{ inputs.gpg_email }}"
         git config --global user.name "${{ inputs.gpg_name }}"
