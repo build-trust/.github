@@ -92,7 +92,21 @@ Each commit message consists of a header, a body and a footer. The header includ
   - test: add missing tests or correct existing tests
   - docs: a documentation only change
   - chore: some minor change that doesn't fall in any of the other types
+  - content: changes the content of the website
+    - Note: Only available for the `build-trust/ockam-website` repository
 
+**Examples**
+```
+style: remove trailing white space
+```
+
+```
+  feat(transports): add new example transport type
+
+  Create example transport type to improve transport coverage.
+
+  Closes #555
+```
 ## Helpful References
 
 * [How to contribute to open source](https://opensource.guide/how-to-contribute/)
