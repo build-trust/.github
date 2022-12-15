@@ -4,6 +4,9 @@ inputs:
   image_name:
     description: "Image name"
     required: true
+  buildx_metadata_file:
+    description: "Buildx metadata if multi platform build is used"
+    required: false
 outputs:
   image_digest:
     description: "Image digest"
@@ -15,5 +18,15 @@ runs:
     - shell: bash
       id: image_digest
       run: |
-        digest=$(docker images --no-trunc --quiet ${{ inputs.image_name }})
-        echo "::set-output name=digest::$digest"
+        set -ex
+        metadata_file="${{ inputs.buildx_metadata_file }}"
+
+        if [[ -z $metadata_file ]]; then
+          image_details=$(docker image inspect ${{ inputs.image_name }})
+          digest=$(jq -r .[0].RepoDigests[0] <<<$image_details)
+          digest=${digest#*@}
+        else
+          digest=$( jq -r '."containerimage.digest"' $metadata_file )
+        fi
+
+        echo "digest=$digest" >> $GITHUB_OUTPUT
