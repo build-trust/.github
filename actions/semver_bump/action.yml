@@ -56,11 +56,23 @@ runs:
           # package. Since packages are ALWAYS incremented when published, and array list
           # are returned per incremented ID, we can rely on returned order to get latest version. 
           versions_length=$(jq '. | length' <<< $versions)
+          found_latest="false"
           for (( c=0; c<$versions_length; c++ )); do
             version=$(jq -r ".[$c]" <<< $versions)
-            if [[ $version != *".sig"* && $version != "latest" ]]; then
-              CURRENT_VERSION="$version"
-              break
+            echo "===> Version $version length $versions_length $c"
+
+            if [[ $version != *".sig"* ]]; then
+              echo "===> Non-sig Version $version length $versions_length $c"
+              if [[ $version == "latest" ]]; then
+                echo "Found a latest version"
+                found_latest="true"
+              elif [[ $found_latest == "true" ]]; then
+                echo "Found a version"
+                CURRENT_VERSION="$version"
+                break
+              elif [[ $versions_length == 1 && $version == "latest" ]]; then
+                CURRENT_VERSION="0.0.0"
+              fi
             fi
           done
         fi
