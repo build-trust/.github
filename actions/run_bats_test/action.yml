@@ -1,0 +1,89 @@
+name: Run Bats Test
+description: Run Bats Test On CI
+
+inputs:
+  perform_ockam_enroll:
+    description: "Perform Ockam Enroll"
+    required: true
+  script_path:
+    description: "Enrollment Script Path"
+    required: true
+  ockam_repository_ref:
+    description: "Ref From Which To Build Ockam Command"
+    required: false
+  controller_id:
+    description: "Controller ID Of Ockam Command"
+    required: false
+  controller_addr:
+    description:
+      description: "Controller Address Of Ockam Command"
+      required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set Env Variables
+      shell: bash
+      run: |
+        if [[ -n "${{ inputs.controller_id }}" ]]; then
+          echo "OCKAM_CONTROLLER_IDENTITY_ID=${{ inputs.controller_id }}" >> $GITHUB_ENV
+          echo "OCKAM_CONTROLLER_ADDR=${{ inputs.controller_addr }}" >> $GITHUB_ENV
+        fi
+
+    - name: Move Ockam Config To Config Dir
+      if: ${{ inputs.perform_ockam_enroll == 'false' }}
+      shell: bash
+      run: |
+        set -ex
+        mkdir /github/home/.local
+        cp -r /configs/.ockam /github/home
+
+        ls /github/home
+
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        fetch-depth: 0
+        ref: ${{ inputs.ockam_repository_ref }}
+        repository: build-trust/ockam
+        path: ockam
+
+    - name: Build Ockam Binary
+      working-directory: ockam
+      shell: bash
+      run: |
+        cargo build --bin ockam
+        echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
+
+    - name: Ockam Enroll
+      shell: bash
+      if: ${{ inputs.perform_ockam_enroll == 'true' }}
+      run: |
+        set -ex
+        SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="test@ockam.io" bash ${{ inputs.script_path }}/ockam_enroll.sh
+
+    - name: Ockam Bats Test
+      shell: bash
+      working-directory: ockam/implementations/rust/ockam/ockam_command/tests
+      run: |
+        set -ex;
+        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats commands.bats;
+
+    - name: Teardown Projects
+      if: failure() || cancelled()
+      shell: bash
+      run: |
+        set -ex
+        ockam space list
+        projects=$(ockam project list --output json)
+        projects_length=$(jq '.|length' <<< $projects)
+
+        for (( c=0; c<$projects_length; c++ )); do
+          project_space_name=$(jq -r ".[$c].space_name" <<< $projects)
+          project_name=$(jq -r ".[$c].name" <<< $projects)
+
+          if [[ "$project_name" != "default" ]]; then
+            ockam project delete $project_space_name $project_name
+          elif [[ "${{ inputs.perform_ockam_enroll }}" == "true" ]]; then
+            ockam project delete $project_space_name $project_name
+          fi
+        done
