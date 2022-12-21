@@ -1,0 +1,49 @@
+name: Check If Ockam Elixir Dep Need An Update
+description: Check If Ockam Elixir Dependency Need An Update
+
+inputs:
+  repository_name:
+    description: "Repository Name"
+    required: true
+  csv_file_path:
+    description: "CSV File Path"
+    required: true
+
+outputs:
+  run_is_unique:
+    description: "Indicates If There Was Indeed An Update"
+    value: ${{ steps.unique_runner.outputs.commit_already_built }}
+  ockam_ref:
+    description: "Ockam Commit"
+    value: ${{ steps.ockam_ref.outputs.ref }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        repository: 'build-trust/ockam'
+        path: 'ockam'
+        fetch-depth: 0
+
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        path: ${{ inputs.repository_name }}
+        fetch-depth: 0
+
+    - shell: bash
+      id: ockam_ref
+      working-directory: ockam
+      run: |
+        sha=$(git rev-parse HEAD)
+        echo "::set-output name=ref::$sha"
+      
+    - uses: build-trust/.github/actions/unique_checker@custom-actions
+      id: unique_runner
+      with:
+          path: implementations/rust/elixir
+          sha_column: 3
+          csv_filepath: ${{ inputs.csv_file_path }}
+
+    - if: ${{ steps.unique_runner.outputs.commit_already_built == 0 && github.event_name != 'workflow_dispatch' }}
+      uses: build-trust/.github/actions/cancel_workflow@custom-actions

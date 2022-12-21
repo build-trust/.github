@@ -1,0 +1,54 @@
+name: Update Ockam Elixir Dependency
+description: Update Ockam Elixir Dependency
+
+inputs:
+  dependency_to_update: 
+    description: "Dependency To Update"
+    required: true
+  ockam_ref:
+    description: "Ockam Ref That Made The Update"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      with:
+        fetch-depth: 0
+
+    - shell: bash
+      run: |
+        set -ex
+
+        # Get all dependencies 
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+
+        # Update deps
+        mix deps.update ${{ inputs.dependency_to_update }}
+        # Compile repository
+        mix compile
+
+    - shell: bash
+      run: |
+        event_name="${{ github.event_name }}"
+        if [[ $event_name == 'workflow_dispatch' ]]; then
+          commit_message="${{ github.actor }},$(date +'%b %d %Y %T'),${{ inputs.ockam_ref }}"
+        else
+          commit_message="cron_job,$(date +'%b %d %Y %T'),${{ inputs.ockam_ref }}"
+        fi
+
+        echo "$commit_message" >> commit_log.csv
+
+    - shell: bash
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        git add commit_log.csv
+        git add mix.lock
+        git commit -m "Update dependencies"
+
+        git pull --rebase
+        git push
