@@ -48,6 +48,11 @@ runs:
           commit_unique=true
           for commit in ${recently_built_commits[@]:1}; do
             echo "Checking commit $commit"
+            # Skip default branch
+            if [[ $commit == "develop" ]]; then
+              continue
+            fi
+
             # Check if specified commit in csv is valid.
             if git rev-parse --verify $commit; then
               if git diff $commit --quiet --name-status -- $path; then
