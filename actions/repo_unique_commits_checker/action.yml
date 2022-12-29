@@ -1,0 +1,39 @@
+name: Check Repository Cron Job Run
+description: Check Repository If There Was A Unique Cron Job Run
+
+inputs:
+  csv_file_name:
+    description: "CSV File Name"
+    required: true
+
+outputs:
+  is_unique:
+    description: "Indicates If Cron Job Is Unique"
+    value: ${{ steps.runner.outputs.unique }}
+  commit_sha:
+    description: "Current Commit SHA"
+    value: ${{ steps.runner.outputs.sha }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+    - shell: bash
+      id: runner
+      run: |
+        set -x
+
+        # Get current commit SHA
+        current_sha=$(git rev-parse HEAD)
+
+        commit_logs="${{ inputs.csv_file_name }}"
+        find $commit_logs
+
+        # Ensure tag name doesn't exist in cron log
+        if cat $commit_logs | grep $current_sha; then
+          echo "unique=false" >> $GITHUB_OUTPUT
+        else
+          echo "unique=true" >> $GITHUB_OUTPUT
+          echo "sha=$current_sha" >> $GITHUB_OUTPUT
+        fi

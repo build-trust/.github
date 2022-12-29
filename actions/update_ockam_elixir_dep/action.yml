@@ -19,6 +19,7 @@ runs:
     - shell: bash
       run: |
         set -ex
+        git pull --rebase
 
         # Get all dependencies 
         mix local.hex --force

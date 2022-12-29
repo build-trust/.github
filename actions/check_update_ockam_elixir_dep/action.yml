@@ -36,14 +36,14 @@ runs:
       working-directory: ockam
       run: |
         sha=$(git rev-parse HEAD)
-        echo "::set-output name=ref::$sha"
-      
+        echo "ref=$sha" >> $GITHUB_OUTPUT
+
     - uses: build-trust/.github/actions/unique_checker@custom-actions
       id: unique_runner
       with:
-          path: implementations/rust/elixir
-          sha_column: 3
-          csv_filepath: ${{ inputs.csv_file_path }}
+        path: implementations/rust/elixir
+        sha_column: 3
+        csv_filepath: ${{ inputs.csv_file_path }}
 
     - if: ${{ steps.unique_runner.outputs.commit_already_built == 0 && github.event_name != 'workflow_dispatch' }}
       uses: build-trust/.github/actions/cancel_workflow@custom-actions
