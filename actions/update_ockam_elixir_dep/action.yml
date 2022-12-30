@@ -8,6 +8,9 @@ inputs:
   ockam_ref:
     description: "Ockam Ref That Made The Update"
     required: true
+  csv_file_path:
+    description: "CSV File Path"
+    required: true
 
 runs:
   using: "composite"
@@ -40,14 +43,14 @@ runs:
           commit_message="cron_job,$(date +'%b %d %Y %T'),${{ inputs.ockam_ref }}"
         fi
 
-        echo "$commit_message" >> commit_log.csv
+        echo "$commit_message" >> ${{ inputs.csv_file_path }}
 
     - shell: bash
       run: |
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         
-        git add commit_log.csv
+        git add ${{ inputs.csv_file_path }}
         git add mix.lock
         git commit -m "Update dependencies"
 
