@@ -1,0 +1,87 @@
+name: Get Latest Image Version
+description: Get Latest Image Version
+
+inputs:
+  package_version_api_url:
+    description: "URL to access package version"
+    required: true
+  github_token:
+    description: "Github Token"
+    required: true
+
+outputs:
+  latest_version:
+    description: "Image Latest Version"
+    value: ${{ steps.version.outputs.VERSION }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        repository: fsaintjacques/semver-tool
+        ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0
+        path: semver
+
+    - shell: bash
+      id: semver
+      run: |
+        set -o xtrace
+        install semver/src/semver /usr/local/bin/
+
+    - id: version
+      shell: bash
+      env:
+        CURL_HEADER: "'Accept: application/vnd.github.v3+json'"
+        CURL_URL: "${{ inputs.package_version_api_url }}"
+      run: |
+        set -o xtrace
+        response=$(curl --silent -u build-trust:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL)
+
+        # Check if package ever exists.
+        if message=$(echo "$response" | jq -r '.message'); then
+          echo "$message"
+          if [[ $message == "Package not found." ]]; then
+            echo "Package is to be tagged 0.0.0"
+            echo "version=0.0.0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+        else
+          versions=$(curl --silent -u ${{ env.REPOSITORY_NAME }}:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL | jq '[.[].metadata.container.tags]')
+          versions_length=$(jq '. | length' <<< $versions)
+
+          # We loop through the list of arrays to find which is the recently published
+          # package. Since packages are ALWAYS incremented when published, and array list
+          # are returned per incremented ID, we can rely on returned order to get latest version. 
+          for (( c=0; c<$versions_length; c++ )); do
+            tags=$(jq -r ".[$c]" <<< $versions)
+            tag_length=$(eval "echo '$tags' | jq '. | length' ");
+
+            if [[ $tag_length < 2 || $tags == *".sig"* ]]; then
+              continue
+            fi
+
+            if [[ $tags == *"latest"* ]]; then
+              if [[ $tag_length != 2 ]]; then
+                echo "We do not treat version tags > 2";
+                exit 1
+              fi
+
+              for (( d=0; d<$tag_length; d++ )); do
+                tag=$(jq -r ".[$d]" <<< $tags)
+
+                if [[ $tag != "latest" ]]; then
+                  echo "cloud node image tag is $tag"
+                  echo "version=$tag" >> $GITHUB_OUTPUT
+                  exit 0
+                fi
+              done
+            fi
+          done
+        fi
+
+        echo "No Latest version found"
+        echo ""
+        echo ""
+        echo "$response"
+        exit 1

@@ -1,5 +1,5 @@
-name: Cancel Workflow
-description: Cancel A Running Workflow
+name: Bump Image Version
+description: Bump Docker Image To Version Specified In Input
 
 inputs:
   package_version_api_url:
@@ -7,7 +7,7 @@ inputs:
     required: true
   bump:
     description: "Version to bump to, patch, minor, and major"
-    default: minor
+    default: patch
     required: true
   github_token:
     description: "Github Token"
@@ -16,80 +16,29 @@ inputs:
 outputs:
   updated_version:
     description: "Updated version that image will be bumped to"
-    value: ${{ steps.version.outputs.NEW_VERSION }}
+    value: ${{ steps.bumped_version.outputs.NEW_VERSION }}
 
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+    - uses: build-trust/.github/actions/get_latest_image_version@custom-actions
+      id: current_latest_version
       with:
-        repository: fsaintjacques/semver-tool
-        ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0
-        path: semver
+        package_version_api_url: ${{ inputs.package_version_api_url }}
+        github_token: ${{ inputs.github_token }}
 
     - shell: bash
-      id: semver
+      id: bumped_version
       run: |
-        set -o xtrace
-        install semver/src/semver /usr/local/bin/
+        current_version="${{ steps.current_latest_version.outputs.latest_version }}"
+        bump="${{ inputs.bump }}"
 
-    - id: version
-      shell: bash
-      env:
-        CURL_HEADER: "'Accept: application/vnd.github.v3+json'"
-        CURL_URL: "${{ inputs.package_version_api_url }}"
-        BUMP: "${{ inputs.bump }}"
-      run: |
-        set -o xtrace
-        response=$(curl --silent -u build-trust:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL)
-
-        # Check if package ever exists.
-        if message=$(echo "$response" | jq -r '.message'); then
-          echo "$message"
-          if [[ $message == "Package not found." ]]; then
-            echo "Package is to be tagged 0.0.0"
-            CURRENT_VERSION="0.0.0"
-          fi
+        if [[ -n $bump ]]; then
+          echo "Bumping version $current_version as ${bump} specified in workflow dispatch"
+          bumped_version=$(semver bump ${bump} ${current_version})
         else
-          versions=$(echo "$response" | jq '.[].metadata.container.tags' | jq -n '[inputs|.[]]')
-          # We loop through the list of arrays to find which is the recently published
-          # package. Since packages are ALWAYS incremented when published, and array list
-          # are returned per incremented ID, we can rely on returned order to get latest version. 
-          versions_length=$(jq '. | length' <<< $versions)
-          found_latest="false"
-          for (( c=0; c<$versions_length; c++ )); do
-            version=$(jq -r ".[$c]" <<< $versions)
-            echo "===> Version $version length $versions_length $c"
-
-            if [[ $version != *".sig"* ]]; then
-              echo "===> Non-sig Version $version length $versions_length $c"
-              if [[ $version == "latest" ]]; then
-                echo "Found a latest version"
-                found_latest="true"
-              elif [[ $found_latest == "true" ]]; then
-                echo "Found a version"
-                CURRENT_VERSION="$version"
-                break
-              elif [[ $versions_length == 1 && $version == "latest" ]]; then
-                CURRENT_VERSION="0.0.0"
-              fi
-            fi
-          done
+          echo "Setting BUMP version to patch as job is a cron-job"
+          bumped_version=$(semver bump patch ${current_version})
         fi
 
-        if [[ -z $CURRENT_VERSION ]]; then
-          echo "Error getting latest version in list"
-          echo "$versions"
-          exit 1
-        fi
-
-        if [[ ! -z $BUMP ]]; then
-          echo "Bumping version $CURRENT_VERSION as ${BUMP} specified in workflow dispatch"
-          version=$(semver bump ${BUMP} ${CURRENT_VERSION})
-          echo "NEW_VERSION=$version" >> $GITHUB_OUTPUT
-          exit 0;
-        fi
-
-        echo "Setting BUMP version to patch as job is a cron-job"
-        version=$(semver bump patch ${CURRENT_VERSION})
-        echo "NEW_VERSION=$version" >> $GITHUB_OUTPUT
+        echo "NEW_VERSION=$bumped_version" >> $GITHUB_OUTPUT
