@@ -1,6 +1,4 @@
-# To use this workflow we need to
-# - Set the Ockam repo to $GITHUB_WORKSPACE/ockam
-# - Fulfill required inputs
+# This action checks if a path has been updated in the `Ockam` repository.
 name: Unique Runner
 description: Check if commit SHA to be run is unique
 inputs:
