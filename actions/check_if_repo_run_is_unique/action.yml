@@ -32,8 +32,10 @@ runs:
         
         if [[ -n $commit_sha ]]; then
           echo "is_cron=false" >> $GITHUB_OUTPUT
+          echo "This is not a Cron"
         else
           echo "is_cron=true" >> $GITHUB_OUTPUT
+          echo "This is a Cron"
         fi
 
     - id: cron_unique_checker
@@ -41,7 +43,7 @@ runs:
       run: |
         # We exit if there has been a change to  `cron_commit_log.csv` 
         # this means that there has been a recent deployment
-        git diff HEAD^1 --quiet --name-status -- '${{ inputs.csv_filepath }}' || ( echo "there has been a recent deployment" && echo "is_unique=false" >> $GITHUB_OUTPUT && exit 0)
+        git diff HEAD^1 --quiet --name-status -- '${{ inputs.csv_filepath }}' || ( echo "there has been a recent deployment" && echo "is_unique=false" >> $GITHUB_OUTPUT && echo "Exiting now" &&  exit 0)
 
         echo "is_unique=true" >> $GITHUB_OUTPUT
         echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
@@ -53,6 +55,7 @@ runs:
       shell: bash
       if: ${{ steps.cron_checker.outputs.is_cron == 'false' || steps.cron_unique_checker.outputs.is_unique == 'true' }}
       run: |
+        echo "===> ${{ steps.cron_unique_checker.outputs.is_unique }}"
         ref=""
         if [[ "${{ steps.cron_checker.outputs.is_cron }}" == "true" ]]; then
           echo "cron_job,$(date +'%b %d %Y %T'),${{ steps.cron_unique_checker.outputs.commit_sha }}" >> ${{ inputs.csv_filepath }}
@@ -71,4 +74,4 @@ runs:
         git push
 
         echo "ref=$ref" >> $GITHUB_OUTPUT
-        echo "is_unique=true" >> $GITHUB_OUTPUT
+        echo "is_unique=${{ steps.cron_unique_checker.outputs.is_unique }}" >> $GITHUB_OUTPUT
