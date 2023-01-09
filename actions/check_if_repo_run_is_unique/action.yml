@@ -30,25 +30,39 @@ runs:
       run: |
         commit_sha='${{ github.event.inputs.commit_sha }}'
         
-        if [[ -n $commit_sha ]]; then
-          echo "is_cron=false" >> $GITHUB_OUTPUT
-          echo "This is not a Cron"
-        else
+        if [[ -z $commit_sha ]]; then
           echo "is_cron=true" >> $GITHUB_OUTPUT
           echo "This is a Cron"
+        else
+          echo "is_cron=false" >> $GITHUB_OUTPUT
+          echo "This is not a Cron"
         fi
 
     - id: cron_unique_checker
       shell: bash
       run: |
+        git diff HEAD^1 --name-status
+
+        set -ex
+        if [[ "${{ steps.cron_checker.outputs.is_cron }}" == "false" ]]; then
+          echo "This is a workflow dispatch"
+          echo "is_unique=true" >> $GITHUB_OUTPUT
+          echo "commit_sha=${{ github.event.inputs.commit_sha }}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
         # We exit if there has been a change to  `cron_commit_log.csv` 
         # this means that there has been a recent deployment
-        git diff HEAD^1 --quiet --name-status -- '${{ inputs.csv_filepath }}' || ( echo "there has been a recent deployment" && echo "is_unique=false" >> $GITHUB_OUTPUT && echo "Exiting now" &&  exit 0)
+        if git diff HEAD^1 --exit-code --name-status -- ${{ inputs.csv_filepath }}; then
+          echo "This is a unique run"
+          echo "is_unique=true" >> $GITHUB_OUTPUT
+          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        else
+          echo "There has been a recent deployment"
+          echo "is_unique=false" >> $GITHUB_OUTPUT
+        fi
 
-        echo "is_unique=true" >> $GITHUB_OUTPUT
-        echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
-    - if: ${{ steps.cron_checker.outputs.is_cron == 'true' && steps.cron_unique_checker.outputs.is_unique == 'false' }}
+    - if: ${{ steps.cron_unique_checker.outputs.is_unique == 'false' }}
       uses: build-trust/.github/actions/cancel_workflow@custom-actions
 
     - id: runner
@@ -71,6 +85,7 @@ runs:
 
         git add ${{ inputs.csv_filepath }}
         git commit -m "Add $ref to cron_log"
+        git pull --rebase
         git push
 
         echo "ref=$ref" >> $GITHUB_OUTPUT
