@@ -29,6 +29,7 @@ runs:
         set -o xtrace
         install semver/src/semver /usr/local/bin/
 
+    # https://docs.github.com/en/rest/packages?apiVersion=2022-11-28#list-package-versions-for-a-package-owned-by-an-organization
     - id: version
       shell: bash
       env:
@@ -47,36 +48,48 @@ runs:
             exit 0
           fi
         else
-          versions=$(curl --silent -u ${{ env.REPOSITORY_NAME }}:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL | jq '[.[].metadata.container.tags]')
-          versions_length=$(jq '. | length' <<< $versions)
+          page_number=1
+          CURL_URL_PAGED="${CURL_URL}?page=${page_number}&per_page=100"
 
-          # We loop through the list of arrays to find which is the recently published
-          # package. Since packages are ALWAYS incremented when published, and array list
-          # are returned per incremented ID, we can rely on returned order to get latest version. 
-          for (( c=0; c<$versions_length; c++ )); do
-            tags=$(jq -r ".[$c]" <<< $versions)
-            tag_length=$(eval "echo '$tags' | jq '. | length' ");
+          while true; do
+            versions=$(curl --silent -u ${{ env.REPOSITORY_NAME }}:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL_PAGED | jq '[.[].metadata.container.tags]')
+            versions_length=$(jq '. | length' <<< $versions)
 
-            if [[ $tag_length < 2 || $tags == *".sig"* ]]; then
-              continue
+            if [[ $versions_length == 0 ]]; then
+              echo "Latest version not found"
+              exit 1
             fi
 
-            if [[ $tags == *"latest"* ]]; then
-              if [[ $tag_length != 2 ]]; then
-                echo "We do not treat version tags > 2";
-                exit 1
+            # We loop through the list of arrays to find which is the recently published
+            # package. Since packages are ALWAYS incremented when published, and array list
+            # are returned per incremented ID, we can rely on returned order to get latest version. 
+            for (( c=0; c<$versions_length; c++ )); do
+              tags=$(jq -r ".[$c]" <<< $versions)
+              tag_length=$(eval "echo '$tags' | jq '. | length' ");
+
+              if [[ $tag_length < 2 || $tags == *".sig"* ]]; then
+                continue
               fi
 
-              for (( d=0; d<$tag_length; d++ )); do
-                tag=$(jq -r ".[$d]" <<< $tags)
-
-                if [[ $tag != "latest" ]]; then
-                  echo "cloud node image tag is $tag"
-                  echo "version=$tag" >> $GITHUB_OUTPUT
-                  exit 0
+              if [[ $tags == *"latest"* ]]; then
+                if [[ $tag_length != 2 ]]; then
+                  echo "We do not treat version tags > 2";
+                  exit 1
                 fi
-              done
-            fi
+
+                for (( d=0; d<$tag_length; d++ )); do
+                  tag=$(jq -r ".[$d]" <<< $tags)
+
+                  if [[ $tag != "latest" ]]; then
+                    echo "cloud node image tag is $tag"
+                    echo "version=$tag" >> $GITHUB_OUTPUT
+                    exit 0
+                  fi
+                done
+              fi
+            done
+
+            ((page_number+=1))
           done
         fi
 
