@@ -47,6 +47,21 @@ runs:
         repository: build-trust/ockam
         path: ockam
 
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: |
+          /usr/rust/cargo/bin
+          /usr/rust/cargo/registry/index
+          /usr/rust/cargo/registry/cache
+          /usr/rust/cargo/git/db
+        key: cache-ockam-bats-local-home
+
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: ockam/target
+        key: cache-ockam-bats-target
+
+
     - name: Build Ockam Binary
       working-directory: ockam
       shell: bash
@@ -67,6 +82,25 @@ runs:
       run: |
         set -ex;
         ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats commands.bats;
+
+    - shell: bash
+      working-directory: ockam
+      run: |
+        crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
+        # Get target folder size
+        du -sh target
+        rm -rf ./target/debug/examples
+        rm -rf ./target/debug/incremental
+        for mode in debug release; do
+          for dir in deps .fingerprint build; do
+            if [ -d "target/$mode/$dir" ]; then
+              cd "target/$mode/$dir"
+              for crate in "${crates[@]}"; do rm -rf $crate* lib$crate*; done
+              cd -
+            fi
+          done
+        done
+        du -sh target
 
     - name: Teardown Projects
       if: failure() || cancelled()
