@@ -25,6 +25,7 @@ runs:
     - name: Set Env Variables
       shell: bash
       run: |
+        echo "====> ${{ inputs.ockam_repository_ref }} Ockam ref here"
         if [[ -n "${{ inputs.controller_id }}" ]]; then
           echo "OCKAM_CONTROLLER_IDENTITY_ID=${{ inputs.controller_id }}" >> $GITHUB_ENV
           echo "OCKAM_CONTROLLER_ADDR=${{ inputs.controller_addr }}" >> $GITHUB_ENV
@@ -60,7 +61,6 @@ runs:
       with:
         path: ockam/target
         key: cache-ockam-bats-target
-
 
     - name: Build Ockam Binary
       working-directory: ockam
