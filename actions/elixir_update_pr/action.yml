@@ -1,0 +1,87 @@
+# We need to update Elixir dependencies when a Elixir changes are made
+# to the /ockam repository.
+# We get the commit SHA of the ockam repository and confirm if a PR
+# has been made in the private repository updating its dependency, if a 
+# PR or branch has not been created, we create a new branch and a PR.
+name: Update Elixir Dependency
+description: Update Elixir Dependency
+
+inputs:
+  repository_name:
+    description: "Repository Who Ockam Dependency We Are To Bump"
+    required: true
+  dependency_to_update:
+    description: "Ockam Dependency To Update"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        repository: 'build-trust/ockam'
+        path: 'ockam'
+        fetch-depth: 0
+
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        path: ${{ inputs.repository_name }}
+        fetch-depth: 0
+
+    - shell: bash
+      working-directory: ockam
+      id: ockam_ref
+      run: |
+        # Get recent commit SHA of Elixir path
+        commit_sha=$(git rev-list HEAD implementations/elixir/ockam)
+        echo "commit_sha=$commit_sha" >> $GITHUB_OUTPUT
+        
+    - shell: bash
+      working-directory: ${{ inputs.repository_name }}
+      id: branch
+      run: |
+        # Check if there was a branch named after updated /ockam commit SHA
+        branch_name="bot/update_${{ steps.ockam_ref.outputs.commit_sha }}"
+
+        if [[ ! git show-ref --quiet refs/heads/${branch_name} ]]; then
+          echo "branch_exists=false" >> $GITHUB_OUTPUT
+          echo "branch_name=${branch_name}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        echo "branch_exists=true" >> $GITHUB_OUTPUT
+
+    - shell: bash
+      working-directory: ${{ inputs.repository_name }}
+      if: ${{ steps.branch.outputs.branch_exists == 'false' }}
+      run: |
+        # Create a new branch with the specified naming schema
+        # Update dependency for the repository
+
+        set -ex
+        git pull --rebase
+        git checkout -B ${{ steps.branch.outputs.branch_name }}
+
+        # Get all dependencies 
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+
+        # Update deps
+        mix deps.update ${{ inputs.dependency_to_update }}
+        # Compile repository
+        mix compile
+        
+        # Check if there was any update
+        git diff --exit-code -s mix.lock || echo "changes_made=true" >> $GITHUB_OUTPUT
+
+    - uses: peter-evans/create-pull-request@f094b77505fb89581e68a1163fbd2fffece39da1 # v4.0.3
+      with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch.outputs.branch_name }}
+          commit-message: "ci: update ockam ${{ inputs.dependency_to_update }} dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}"
+          title: Update ockam ${{ inputs.dependency_to_update }} dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
+          body: |
+            Update ockam ${{ inputs.dependency_to_update }} dependency on commit ${{ steps.ockam_ref.outputs.commit_sha }}
+          assignees: metaclips
+          add-paths: mix.lock
