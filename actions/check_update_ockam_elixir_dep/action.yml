@@ -54,7 +54,7 @@ runs:
       if: ${{ steps.unique_runner.outputs.commit_already_built == 1 || github.event_name == 'workflow_dispatch' }}
       run: |
         # Update The Repository CSV File
-        if [[ github.event_name == 'workflow_dispatch' ]]; then
+        if [[ ${{ github.event_name }} == 'workflow_dispatch' ]]; then
           actor="${{ github.actor }}"
         else
           actor="cron_log"

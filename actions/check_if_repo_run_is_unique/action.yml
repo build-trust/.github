@@ -9,9 +9,9 @@ inputs:
   csv_filepath:
     description: "CSV file name"
     required: true
-  branch:
+  log_branch:
     description: "Repository Branch To Check Out To"
-    required: false
+    required: true
 
 outputs:
   ref: 
@@ -27,26 +27,23 @@ runs:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       with:
         fetch-depth: 0
-        ref: ${{ inputs.branch }}
 
     - id: cron_checker
       shell: bash
       run: |
         commit_sha='${{ github.event.inputs.commit_sha }}'
-        
-        if [[ -z $commit_sha ]]; then
-          echo "is_cron=true" >> $GITHUB_OUTPUT
-          echo "This is a Cron"
-        else
+
+        if [[ ${{ github.event_name }} == 'workflow_dispatch' ]]; then
           echo "is_cron=false" >> $GITHUB_OUTPUT
           echo "This is not a Cron"
+        else
+          echo "is_cron=true" >> $GITHUB_OUTPUT
+          echo "This is a Cron"
         fi
 
     - id: cron_unique_checker
       shell: bash
       run: |
-        git diff HEAD^1 --name-status
-
         set -ex
         if [[ "${{ steps.cron_checker.outputs.is_cron }}" == "false" ]]; then
           echo "This is a workflow dispatch"
@@ -55,15 +52,23 @@ runs:
           exit 0
         fi
 
-        # We exit if there has been a change to  `cron_commit_log.csv` 
-        # this means that there has been a recent deployment
-        if git diff HEAD^1 --exit-code --name-status -- ${{ inputs.csv_filepath }}; then
-          echo "This is a unique run"
-          echo "is_unique=true" >> $GITHUB_OUTPUT
-          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-        else
+        # Get current commit SHA of default branch
+        default_branch_commit_sha=$(git rev-parse HEAD)
+
+        # Check out to branch that stores log
+        git checkout ${{ inputs.log_branch }}
+
+        # Check if commit SHA is present in CSV log
+        log=$(cat ${{ inputs.csv_filepath }})
+
+        if [[ $log == *"$default_branch_commit_sha"* ]]; then
+          echo "Commit exists in csv file"
           echo "There has been a recent deployment"
           echo "is_unique=false" >> $GITHUB_OUTPUT
+        else
+          echo "This is a unique run"
+          echo "is_unique=true" >> $GITHUB_OUTPUT
+          echo "commit_sha=$default_branch_commit_sha" >> $GITHUB_OUTPUT
         fi
 
     - if: ${{ steps.cron_unique_checker.outputs.is_unique == 'false' }}
@@ -83,9 +88,6 @@ runs:
           echo "${{ github.actor }},$(date +'%b %d %Y %T'),${{ github.event.inputs.commit_sha }}" >> ${{ inputs.csv_filepath }}
           ref="${{ steps.cron_unique_checker.outputs.commit_sha }}"
         fi
-
-        git config --global user.email "bot@ockam.io"
-        git config --global user.name "Ockam Bot"
 
         git add ${{ inputs.csv_filepath }}
         git commit -m "Add $ref to cron_log"
