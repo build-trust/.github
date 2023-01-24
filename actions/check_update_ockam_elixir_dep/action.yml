@@ -8,6 +8,9 @@ inputs:
   csv_file_path:
     description: "CSV File Path"
     required: true
+  log_branch:
+    description: "Branch Where CSV Log Is Stored"
+    required: true
 
 outputs:
   run_is_unique:
@@ -29,6 +32,7 @@ runs:
     - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
       with:
         path: ${{ inputs.repository_name }}
+        ref: ${{ inputs.log_branch }}
         fetch-depth: 0
 
     - shell: bash
@@ -44,6 +48,25 @@ runs:
         path: implementations/rust/elixir
         sha_column: 3
         csv_filepath: ${{ inputs.csv_file_path }}
+
+    - shell: bash
+      working-directory: ${{ inputs.repository_name }}
+      if: ${{ steps.unique_runner.outputs.commit_already_built == 1 || github.event_name == 'workflow_dispatch' }}
+      run: |
+        # Update The Repository CSV File
+        if [[ github.event_name == 'workflow_dispatch' ]]; then
+          actor="${{ github.actor }}"
+        else
+          actor="cron_log"
+        fi
+
+        echo "$actor,$(date +'%b %d %Y %T'),${{ steps.ockam_ref.outputs.ref }}" >> ${{ inputs.csv_file_path }}
+        git add ${{ inputs.csv_file_path }}
+        git commit -m "log: update dependency for ockam ref ${{ steps.ockam_ref.outputs.ref }}"
+
+        git pull --rebase
+        git push
+
 
     - if: ${{ steps.unique_runner.outputs.commit_already_built == 0 && github.event_name != 'workflow_dispatch' }}
       uses: build-trust/.github/actions/cancel_workflow@custom-actions
