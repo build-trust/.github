@@ -9,6 +9,9 @@ inputs:
   csv_filepath:
     description: "CSV file name"
     required: true
+  branch:
+    description: "Repository Branch To Check Out To"
+    required: false
 
 outputs:
   ref: 
@@ -24,6 +27,7 @@ runs:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       with:
         fetch-depth: 0
+        ref: ${{ inputs.branch }}
 
     - id: cron_checker
       shell: bash
