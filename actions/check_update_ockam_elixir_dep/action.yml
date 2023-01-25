@@ -62,7 +62,7 @@ runs:
 
         echo "$actor,$(date +'%b %d %Y %T'),${{ steps.ockam_ref.outputs.ref }}" >> ${{ inputs.csv_file_path }}
         git add ${{ inputs.csv_file_path }}
-        git commit -s -m "log: update dependency for ockam ref ${{ steps.ockam_ref.outputs.ref }}"
+        git commit -S -m "log: update dependency for ockam ref ${{ steps.ockam_ref.outputs.ref }}"
 
         git pull --rebase
         git push

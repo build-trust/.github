@@ -49,7 +49,7 @@ runs:
       run: |
         git add ${{ inputs.csv_file_path }}
         git add mix.lock
-        git commit -s -m "Update dependencies"
+        git commit -S -m "Update dependencies"
 
         git pull --rebase
         git push
