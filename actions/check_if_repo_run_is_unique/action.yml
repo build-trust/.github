@@ -90,7 +90,7 @@ runs:
         fi
 
         git add ${{ inputs.csv_filepath }}
-        git commit -m "Add $ref to cron_log"
+        git commit -s -m "Add $ref to cron_log"
         git pull --rebase
         git push
 
