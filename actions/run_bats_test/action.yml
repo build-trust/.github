@@ -15,9 +15,11 @@ inputs:
     description: "Controller ID Of Ockam Command"
     required: false
   controller_addr:
-    description:
-      description: "Controller Address Of Ockam Command"
-      required: false
+    description: "Controller Address Of Ockam Command"
+    required: false
+  use_last_release_tag:
+    description: "Run Bats Test On Last Release Tag"
+    required: false
 
 runs:
   using: "composite"
@@ -47,6 +49,15 @@ runs:
         ref: ${{ inputs.ockam_repository_ref }}
         repository: build-trust/ockam
         path: ockam
+
+    - shell: bash
+      working-directory: ockam
+      id: ockam_ref
+      run: |
+        if [[ -n "${{ inputs.use_last_release_tag }}" ]]; then
+          last_git_tag=$(git describe --tags --abbrev=0)
+          git checkout $last_git_tag
+        fi
 
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
