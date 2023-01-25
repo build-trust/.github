@@ -133,7 +133,5 @@ runs:
 
           if [[ "$project_name" != "default" ]]; then
             ockam project delete $project_space_name $project_name
-          elif [[ "${{ inputs.perform_ockam_enroll }}" == "true" ]]; then
-            ockam project delete $project_space_name $project_name
           fi
         done
