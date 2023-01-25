@@ -25,6 +25,21 @@ If you have any other questions about contributing, please ask them on this
 We strive to keep the Ockam community an open and welcoming environment.
 Please read and follow our [Community Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Creating Issues
+
+### Bugs
+Template for a bug creation can be found [here](templates/BUG.md).
+
+General gudlines:
+* Describe the current state, compared to the  desired state
+* Provide exact links of code to change
+* Provide steps to produce
+* Be sure to label the issue with approriate labels where applicable (e.g. "Good First Issue", "Help Wanted")
+
+### Features
+Template for feature creation can be found [here](templates/FEATURE.md).
+
+
 ## Get help
 
 If you have any questions or need help integrating Ockam into your application
