@@ -20,6 +20,10 @@ inputs:
   use_last_release_tag:
     description: "Run Bats Test On Last Release Tag"
     required: false
+  email_address:
+    description: "Emaill Address To Run Ockam Enroll"
+    required: false
+    default: "test@ockam.io"
 
 runs:
   using: "composite"
@@ -79,13 +83,14 @@ runs:
       run: |
         cargo build --bin ockam
         echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
+        ./target/debug/ockam --version
 
     - name: Ockam Enroll
       shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         set -ex
-        SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="test@ockam.io" bash ${{ inputs.script_path }}/ockam_enroll.sh
+        SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
 
     - name: Ockam Bats Test
       shell: bash
