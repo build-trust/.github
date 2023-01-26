@@ -36,18 +36,6 @@ runs:
 
     - shell: bash
       run: |
-        event_name="${{ github.event_name }}"
-        if [[ $event_name == 'workflow_dispatch' ]]; then
-          commit_message="${{ github.actor }},$(date +'%b %d %Y %T'),${{ inputs.ockam_ref }}"
-        else
-          commit_message="cron_job,$(date +'%b %d %Y %T'),${{ inputs.ockam_ref }}"
-        fi
-
-        echo "$commit_message" >> ${{ inputs.csv_file_path }}
-
-    - shell: bash
-      run: |
-        git add ${{ inputs.csv_file_path }}
         git add mix.lock
         git commit -S -m "Update dependencies"
 

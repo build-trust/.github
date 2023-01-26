@@ -78,6 +78,9 @@ runs:
       shell: bash
       if: ${{ steps.cron_checker.outputs.is_cron == 'false' || steps.cron_unique_checker.outputs.is_unique == 'true' }}
       run: |
+        # Check out to branch that stores log
+        git checkout ${{ inputs.log_branch }}
+
         echo "===> ${{ steps.cron_unique_checker.outputs.is_unique }}"
         ref=""
         if [[ "${{ steps.cron_checker.outputs.is_cron }}" == "true" ]]; then
