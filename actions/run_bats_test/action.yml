@@ -27,6 +27,9 @@ inputs:
 
 runs:
   using: "composite"
+  env:
+    OCKAM_DISABLE_UPGRADE_CHECK: 1
+
   steps:
     - name: Set Env Variables
       shell: bash
@@ -81,6 +84,7 @@ runs:
       working-directory: ockam
       shell: bash
       run: |
+        echo $OCKAM_DISABLE_UPGRADE_CHECK
         cargo build --bin ockam
         echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
         ./target/debug/ockam --version
