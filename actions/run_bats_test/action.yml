@@ -77,7 +77,8 @@ runs:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: ockam/target
-        key: cache-ockam-bats-target
+        restore-keys: cache-ockam-bats-target-
+        key: cache-ockam-bats-target-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build Ockam Binary
       working-directory: ockam
