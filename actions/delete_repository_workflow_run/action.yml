@@ -1,0 +1,32 @@
+name: Delete Repository Workflow Run
+description: Delete Repository Workflow Run
+
+inputs:
+  github_token:
+    description: "GitHub Token"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      id: runner
+      run: |
+        set -ex
+
+        cancelled_run_ids=$(gh api \
+          -X GET  -H "Accept: application/vnd.github+json" -f status=cancelled -f per_page=40  \
+          /repos/${{ github.repository }}/actions/runs | jq '.workflow_runs[].id')
+
+        if [[ $cancelled_run_ids == 'null' ]]; then
+          exit 0
+        fi
+
+        for run_id in ${cancelled_run_ids[@]}; do
+          gh api \
+            --method DELETE \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/actions/runs/${run_id}
+        done
