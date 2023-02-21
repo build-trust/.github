@@ -32,8 +32,13 @@ runs:
           job_details_len=$(jq '. | length' <<< $job_details)
 
           if [[ $job_details_len < 1 ]]; then
-            echo "Job length is invalid"
-            exit 1
+            echo "Job length is invalid, deleting anyway"
+            gh api \
+              --method DELETE \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${{ github.repository }}/actions/runs/${run_id}
+
+            continue
           fi
 
           first_job_conclusion=$(jq -r '.[0].conclusion' <<< $job_details)
