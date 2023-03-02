@@ -101,7 +101,7 @@ runs:
       working-directory: ockam/implementations/rust/ockam/ockam_command/tests
       run: |
         set -ex;
-        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats -j 6;
+        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats commands.bats;
 
     - shell: bash
       working-directory: ockam
