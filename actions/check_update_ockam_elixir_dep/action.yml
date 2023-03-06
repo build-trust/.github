@@ -45,7 +45,7 @@ runs:
     - uses: build-trust/.github/actions/unique_checker@custom-actions
       id: unique_runner
       with:
-        path: implementations/rust/elixir
+        path: implementations/elixir
         sha_column: 3
         csv_filepath: ${{ inputs.csv_file_path }}
 
