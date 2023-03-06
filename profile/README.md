@@ -172,4 +172,4 @@ Rust, Elixir and soon Typescript libraries to build secure by design application
 - [Documentation](https://docs.ockam.io/)
 - [Contribute to Ockam](https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#contributing-to-ockam-on-github)
 - [Ockam Orchestrator on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-wsd42efzcpsxk)
-- [Join is on Discord](https://discord.gg/RAbjRr3kds)
+- [Join us on Discord](https://discord.gg/RAbjRr3kds)
