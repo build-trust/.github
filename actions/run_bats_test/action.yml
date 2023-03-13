@@ -29,8 +29,7 @@ runs:
   using: "composite"
 
   steps:
-    - name: Set Env Variables
-      shell: bash
+    - shell: bash
       run: |
         echo "OCKAM_DISABLE_UPGRADE_CHECK=1"  >> $GITHUB_ENV
         echo "====> ${{ inputs.ockam_repository_ref }} Ockam ref here"
@@ -39,8 +38,7 @@ runs:
           echo "OCKAM_CONTROLLER_ADDR=${{ inputs.controller_addr }}" >> $GITHUB_ENV
         fi
 
-    - name: Move Ockam Config To Config Dir
-      if: ${{ inputs.perform_ockam_enroll == 'false' }}
+    - if: ${{ inputs.perform_ockam_enroll == 'false' }}
       shell: bash
       run: |
         set -ex
@@ -80,8 +78,7 @@ runs:
         restore-keys: cache-ockam-bats-target-
         key: cache-ockam-bats-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build Ockam Binary
-      working-directory: ockam
+    - working-directory: ockam
       shell: bash
       run: |
         echo $OCKAM_DISABLE_UPGRADE_CHECK
@@ -89,19 +86,20 @@ runs:
         echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
         ./target/debug/ockam --version
 
-    - name: Ockam Enroll
-      shell: bash
+    - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         set -ex
         SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
 
-    - name: Ockam Bats Test
-      shell: bash
+    - shell: bash
       working-directory: ockam/implementations/rust/ockam/ockam_command/tests
       run: |
         set -ex;
+        ockam project list
         ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats commands.bats;
+
+        echo "Bats passed...."
 
     - shell: bash
       working-directory: ockam
@@ -122,20 +120,38 @@ runs:
         done
         du -sh target
 
-    - name: Teardown Projects
-      if: failure() || cancelled()
+    - if: ${{ always() }}
       shell: bash
       run: |
         set -ex
-        ockam space list
+
+        echo "Clearing resources......"
         projects=$(ockam project list --output json)
         projects_length=$(jq '.|length' <<< $projects)
+
+        default_project_space_name=""
 
         for (( c=0; c<$projects_length; c++ )); do
           project_space_name=$(jq -r ".[$c].space_name" <<< $projects)
           project_name=$(jq -r ".[$c].name" <<< $projects)
 
-          if [[ "$project_name" != "default" ]]; then
+          if [[ "$project_name" != "default" || ${{ inputs.perform_ockam_enroll }} == 'true' ]]; then
             ockam project delete $project_space_name $project_name
+            continue
           fi
+
+          # Save default project space name
+          default_project_space_name=$project_space_name
+        done
+
+        space_names=$(ockam space list --output json)
+        space_name_length=$(jq '.|length' <<< $space_names)
+
+        for (( c=0; c<$space_name_length; c++ )); do
+          space_name=$(jq -r ".[$c].name" <<< $space_names)
+          if [[ $space_name == $default_project_space_name ]]; then
+            continue
+          fi
+
+          ockam space delete $space_name
         done
