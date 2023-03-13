@@ -96,8 +96,8 @@ runs:
       working-directory: ockam/implementations/rust/ockam/ockam_command/tests
       run: |
         set -ex;
-        ockam project list
-        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats commands.bats;
+        ockam project list --output json
+        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
 
         echo "Bats passed...."
 
