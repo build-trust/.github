@@ -49,9 +49,9 @@ runs:
           fi
         else
           page_number=1
-          CURL_URL_PAGED="${CURL_URL}?page=${page_number}&per_page=100"
 
           while true; do
+            CURL_URL_PAGED="${CURL_URL}?page=${page_number}&per_page=100"
             versions=$(curl --silent -u ${{ env.REPOSITORY_NAME }}:${{ inputs.github_token }} -H $CURL_HEADER $CURL_URL_PAGED | jq '[.[].metadata.container.tags]')
             versions_length=$(jq '. | length' <<< $versions)
 
