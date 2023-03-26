@@ -126,6 +126,8 @@ runs:
         set -ex
 
         echo "Clearing resources......"
+        ockam space list --output json
+
         projects=$(ockam project list --output json)
         projects_length=$(jq '.|length' <<< $projects)
 
