@@ -8,9 +8,9 @@ inputs:
   ockam_ref:
     description: "Ockam Ref That Made The Update"
     required: true
-  csv_file_path:
-    description: "CSV File Path"
-    required: true
+  working-directory:
+    description: "Working Directory Of Dependency"
+    required: false
 
 runs:
   using: "composite"
@@ -20,6 +20,7 @@ runs:
         fetch-depth: 0
 
     - shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         set -ex
         git pull --rebase
@@ -35,6 +36,7 @@ runs:
         mix compile
 
     - shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         git add mix.lock
         git commit -S -m "Update dependencies"
