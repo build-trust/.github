@@ -123,7 +123,7 @@ runs:
     - if: ${{ always() }}
       uses: actions/upload-artifact@v3
       with:
-        name: ockam-logs-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
+        name: ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
         path: /github/home/.bats-tests
 
     - if: ${{ always() }}
