@@ -49,7 +49,6 @@ runs:
 
     - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
       with:
-        fetch-depth: 0
         ref: ${{ inputs.ockam_repository_ref }}
         repository: build-trust/ockam
         path: ockam
