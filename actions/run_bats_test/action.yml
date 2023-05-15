@@ -96,6 +96,7 @@ runs:
       run: |
         set -ex;
         ockam project list --output json
+        ls -a /github/home
         ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
 
         echo "Bats passed...."
