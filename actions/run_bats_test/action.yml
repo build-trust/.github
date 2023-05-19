@@ -24,6 +24,10 @@ inputs:
     description: "Emaill Address To Run Ockam Enroll"
     required: false
     default: "test@ockam.io"
+  cache_ockam_build:
+    description: "Cache Ockam Build"
+    required: false
+    default: true
 
 runs:
   using: "composite"
@@ -63,6 +67,7 @@ runs:
         fi
 
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      if: ${{ inputs.cache_ockam_build == 'true' }}
       with:
         path: |
           /usr/rust/cargo/bin
@@ -72,6 +77,7 @@ runs:
         key: cache-ockam-bats-local-home
 
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      if: ${{ inputs.cache_ockam_build == 'true' }}
       with:
         path: ockam/target
         restore-keys: cache-ockam-bats-target-
@@ -90,6 +96,7 @@ runs:
       run: |
         set -ex
         SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
+        ls /github/home
 
     - shell: bash
       working-directory: ockam/implementations/rust/ockam/ockam_command/tests
@@ -103,6 +110,7 @@ runs:
 
     - shell: bash
       working-directory: ockam
+      if: ${{ inputs.cache_ockam_build == 'true' }}
       run: |
         crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
         # Get target folder size
