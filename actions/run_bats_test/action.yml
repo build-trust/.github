@@ -24,10 +24,12 @@ inputs:
     description: "Emaill Address To Run Ockam Enroll"
     required: false
     default: "test@ockam.io"
-  cache_ockam_build:
-    description: "Cache Ockam Build"
+  cache_ockam_build_deps:
+    description: "Cache Ockam Build Dependencies"
     required: false
     default: true
+  cache_key:
+    description: "Cache Restore Key" 
 
 runs:
   using: "composite"
@@ -66,8 +68,8 @@ runs:
           git checkout $last_git_tag
         fi
 
-    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
-      if: ${{ inputs.cache_ockam_build == 'true' }}
+    - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
+      if: ${{ inputs.cache_ockam_build_deps == 'true' }}
       with:
         path: |
           /usr/rust/cargo/bin
@@ -76,18 +78,24 @@ runs:
           /usr/rust/cargo/git/db
         key: cache-ockam-bats-local-home
 
-    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
-      if: ${{ inputs.cache_ockam_build == 'true' }}
+    - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
+      id: ockam_bin_cache
       with:
         path: ockam/target
-        restore-keys: cache-ockam-bats-target-
-        key: cache-ockam-bats-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ inputs.cache_key == '' && 'cache-ockam-bats-target-' || inputs.cache_key }}
+        key: ${{ inputs.cache_key == '' && format('cache-ockam-bats-target-{0}', hashFiles('**/Cargo.lock')) || inputs.cache_key }}
 
     - working-directory: ockam
       shell: bash
       run: |
+        set -ex
         echo $OCKAM_DISABLE_UPGRADE_CHECK
-        cargo build --bin ockam
+
+        # Only build ockam binary if cache wasn't found
+        if [[ '${{ inputs.cache_ockam_build_deps }}' == 'true' || '${{ steps.ockam_bin_cache.outputs.cache-hit }}' == 'false' || -z '${{ steps.ockam_bin_cache.outputs.cache-hit }}' ]]; then
+          cargo build --bin ockam
+        fi
+
         echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
         ./target/debug/ockam --version
 
@@ -110,7 +118,7 @@ runs:
 
     - shell: bash
       working-directory: ockam
-      if: ${{ inputs.cache_ockam_build == 'true' }}
+      if: ${{ inputs.cache_ockam_build_deps == 'true' }}
       run: |
         crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
         # Get target folder size
