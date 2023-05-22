@@ -28,6 +28,9 @@ inputs:
     description: "Cache Ockam Build Dependencies"
     required: false
     default: true
+  ockam_bin_path_to_cache:
+    description: "Binary Path To Cache"
+    default: 'target'
   cache_key:
     description: "Cache Restore Key" 
 
@@ -81,7 +84,7 @@ runs:
     - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
       id: ockam_bin_cache
       with:
-        path: ockam/target
+        path: ockam/${{ inputs.ockam_bin_path_to_cache }}
         restore-keys: ${{ inputs.cache_key == '' && 'cache-ockam-bats-target-' || inputs.cache_key }}
         key: ${{ inputs.cache_key == '' && format('cache-ockam-bats-target-{0}', hashFiles('**/Cargo.lock')) || inputs.cache_key }}
 
