@@ -95,7 +95,7 @@ runs:
       working-directory: ockam/implementations/rust/ockam/ockam_command/tests
       run: |
         set -ex;
-        ockam project list --output json
+        # ockam project list --output json
         ls -a /github/home
         ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
 
@@ -135,34 +135,34 @@ runs:
         ls $HOME/.bats-tests
 
         echo "Clearing resources......"
-        ockam space list --output json
+        # ockam space list --output json
 
-        projects=$(ockam project list --output json)
-        projects_length=$(jq '.|length' <<< $projects)
+        # projects=$(ockam project list --output json)
+        # projects_length=$(jq '.|length' <<< $projects)
 
-        default_project_space_name=""
+        # default_project_space_name=""
 
-        for (( c=0; c<$projects_length; c++ )); do
-          project_space_name=$(jq -r ".[$c].space_name" <<< $projects)
-          project_name=$(jq -r ".[$c].name" <<< $projects)
+        # for (( c=0; c<$projects_length; c++ )); do
+        #   project_space_name=$(jq -r ".[$c].space_name" <<< $projects)
+        #   project_name=$(jq -r ".[$c].name" <<< $projects)
 
-          if [[ "$project_name" != "default" || ${{ inputs.perform_ockam_enroll }} == 'true' ]]; then
-            ockam project delete $project_space_name $project_name
-            continue
-          fi
+        #   if [[ "$project_name" != "default" || ${{ inputs.perform_ockam_enroll }} == 'true' ]]; then
+        #     ockam project delete $project_space_name $project_name
+        #     continue
+        #   fi
 
-          # Save default project space name
-          default_project_space_name=$project_space_name
-        done
+        #   # Save default project space name
+        #   default_project_space_name=$project_space_name
+        # done
 
-        space_names=$(ockam space list --output json)
-        space_name_length=$(jq '.|length' <<< $space_names)
+        # space_names=$(ockam space list --output json)
+        # space_name_length=$(jq '.|length' <<< $space_names)
 
-        for (( c=0; c<$space_name_length; c++ )); do
-          space_name=$(jq -r ".[$c].name" <<< $space_names)
-          if [[ $space_name == $default_project_space_name ]]; then
-            continue
-          fi
+        # for (( c=0; c<$space_name_length; c++ )); do
+        #   space_name=$(jq -r ".[$c].name" <<< $space_names)
+        #   if [[ $space_name == $default_project_space_name ]]; then
+        #     continue
+        #   fi
 
-          ockam space delete $space_name
-        done
+        #   ockam space delete $space_name
+        # done
