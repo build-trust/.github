@@ -9,6 +9,9 @@ inputs:
     description: "Enrollment Script Path"
     required: true
   ockam_repository_ref:
+    description: "Ref From Which To Run Bats Test"
+    required: false
+  ockam_cli_repository_ref:
     description: "Ref From Which To Build Ockam Command"
     required: false
   controller_id:
@@ -50,9 +53,15 @@ runs:
 
     - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
       with:
+        ref: ${{ inputs.ockam_cli_repository_ref != '' && inputs.ockam_cli_repository_ref || inputs.ockam_repository_ref }}
+        repository: build-trust/ockam
+        path: ockam_cli
+
+    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
         ref: ${{ inputs.ockam_repository_ref }}
         repository: build-trust/ockam
-        path: ockam
+        path: ockam_bats
 
     - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
       if: ${{ inputs.build_ockam_binary == 'true' }}
@@ -68,13 +77,13 @@ runs:
       if: ${{ inputs.build_ockam_binary == 'true' }}
       id: ockam_bin_cache
       with:
-        path: ockam/target
+        path: ockam_cli/target
         restore-keys: cache-ockam-bats-target-
         key: cache-ockam-bats-target-hashFiles('**/Cargo.lock')
 
-    - working-directory: ockam
-      if: ${{ inputs.build_ockam_binary == 'true' }}
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
       shell: bash
+      working-directory: ockam_cli
       run: |
         set -ex
         echo $OCKAM_DISABLE_UPGRADE_CHECK
@@ -92,7 +101,7 @@ runs:
         ls /github/home
 
     - shell: bash
-      working-directory: ockam/implementations/rust/ockam/ockam_command/tests
+      working-directory: ockam_bats/implementations/rust/ockam/ockam_command/tests
       run: |
         set -ex;
         ockam project list --output json
@@ -102,7 +111,7 @@ runs:
         echo "Bats passed...."
 
     - shell: bash
-      working-directory: ockam
+      working-directory: ockam_cli
       if: ${{ inputs.build_ockam_binary == 'true' }}
       run: |
         crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
