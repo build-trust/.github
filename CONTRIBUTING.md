@@ -76,7 +76,8 @@ Each commit message consists of a header, a body and a footer. The header includ
 ```
 
 * `<type>(<scope>): <subject>` must not be longer that 100 characters.
-* type is required, must be in lower case and have one of the below values.
+
+* `type` is required, must be in lower case and have one of the below values.
   - build: changes that affect our build system or external dependencies
   - ci: changes to our continuous integration configuration files
   - feat: a new feature
@@ -94,6 +95,14 @@ Each commit message consists of a header, a body and a footer. The header includ
   - chore: some minor change that doesn't fall in any of the other types
   - content: changes the content of the website
     - Note: Only available for the `build-trust/ockam-website` repository
+  
+* `scope` is optional and can be one of `'c', 'elixir', 'typescript', 'rust'`
+
+* `body` must be preceded by a blank line and have a line length less than 100 characters
+
+* `footer` must be preceded by a blank line and have a line length less than 100 characters
+
+The exact linting rules can be found in [this configuration file](https://github.com/build-trust/ockam/blob/develop/tools/commitlint/commitlint.config.js).
 
 **Examples**
 ```
@@ -101,7 +110,7 @@ style: remove trailing white space
 ```
 
 ```
-  feat(transports): add new example transport type
+  feat(rust): add new example transport type
 
   Create example transport type to improve transport coverage.
 
