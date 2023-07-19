@@ -156,7 +156,7 @@ runs:
           project_name=$(jq -r ".[$c].name" <<< $projects)
 
           if [[ "$project_name" != "default" || ${{ inputs.perform_ockam_enroll }} == 'true' ]]; then
-            ockam project delete $project_space_name $project_name --yes
+            ockam project delete $project_space_name $project_name --yes || ockam project delete $project_space_name $project_name
             continue
           fi
 
@@ -173,5 +173,5 @@ runs:
             continue
           fi
 
-          ockam space delete $space_name --yes
+          ockam space delete $space_name --yes || ockam space delete $space_name
         done
