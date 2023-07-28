@@ -83,7 +83,7 @@ runs:
 
     - shell: bash
       working-directory: ockam_cli
-      if: ${{ inputs.build_ockam_binary == 'true' }}
+      if: ${{ inputs.build_ockam_binary == 'true' && steps.ockam_bin_cache.outputs.cache-hit == 'true' }}
       run: |
         crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
         # Get target folder size
