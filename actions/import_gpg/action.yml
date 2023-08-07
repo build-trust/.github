@@ -26,6 +26,7 @@ runs:
     - shell: bash
       id: import_gpg
       run: |
+        set -ex
         echo -e "${{ inputs.gpg_private_key }}" | gpg --import --batch --no-tty
         echo "hello world" > temp.txt
         gpg --detach-sig --yes -v --output=/dev/null --pinentry-mode loopback --passphrase "${{ inputs.gpg_password }}" temp.txt

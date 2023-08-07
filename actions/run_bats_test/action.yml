@@ -63,43 +63,11 @@ runs:
         repository: build-trust/ockam
         path: ockam_bats
 
-    - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
-      if: ${{ inputs.build_ockam_binary == 'true' }}
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      uses: Swatinem/rust-cache@v2
       with:
-        path: |
-          /usr/rust/cargo/bin
-          /usr/rust/cargo/registry/index
-          /usr/rust/cargo/registry/cache
-          /usr/rust/cargo/git/db
-        key: cache-ockam-bats-local-home
-
-    - uses: actions/cache@04f198bf0b2a39f7230a4304bf07747a0bddf146
-      if: ${{ inputs.build_ockam_binary == 'true' }}
-      id: ockam_bin_cache
-      with:
-        path: ockam_cli/target
-        restore-keys: cache-ockam-bats-target-
-        key: cache-ockam-bats-target-hashFiles('**/Cargo.lock')
-
-    - shell: bash
-      working-directory: ockam_cli
-      if: ${{ inputs.build_ockam_binary == 'true' && steps.ockam_bin_cache.outputs.cache-hit == 'true' }}
-      run: |
-        crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
-        # Get target folder size
-        du -sh target
-        rm -rf ./target/debug/examples
-        rm -rf ./target/debug/incremental
-        for mode in debug release; do
-          for dir in deps .fingerprint build; do
-            if [ -d "target/$mode/$dir" ]; then
-              cd "target/$mode/$dir"
-              for crate in "${crates[@]}"; do rm -rf $crate* lib$crate*; done
-              cd -
-            fi
-          done
-        done
-        du -sh target
+        workspaces: "ockam_cli -> target"
+        cache-on-failure: "true"
 
     - if: ${{ inputs.build_ockam_binary == 'true' }}
       shell: bash
@@ -129,26 +97,6 @@ runs:
         ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
 
         echo "Bats passed...."
-
-    - shell: bash
-      working-directory: ockam_cli
-      if: ${{ inputs.build_ockam_binary == 'true' }}
-      run: |
-        crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
-        # Get target folder size
-        du -sh target
-        rm -rf ./target/debug/examples
-        rm -rf ./target/debug/incremental
-        for mode in debug release; do
-          for dir in deps .fingerprint build; do
-            if [ -d "target/$mode/$dir" ]; then
-              cd "target/$mode/$dir"
-              for crate in "${crates[@]}"; do rm -rf $crate* lib$crate*; done
-              cd -
-            fi
-          done
-        done
-        du -sh target
 
     - if: ${{ always() }}
       uses: actions/upload-artifact@v3
