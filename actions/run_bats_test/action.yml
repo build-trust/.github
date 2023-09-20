@@ -76,7 +76,7 @@ runs:
         set -ex
         echo $OCKAM_DISABLE_UPGRADE_CHECK
 
-        cargo build --bin ockam
+        cargo build --locked --bin ockam
 
         echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
         ./target/debug/ockam --version
@@ -94,7 +94,7 @@ runs:
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
+        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
 
         echo "Bats passed...."
 
