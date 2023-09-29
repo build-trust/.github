@@ -8,13 +8,13 @@ We release a new version every week.
 
 All security bugs in Ockam should be reported by email to `security@ockam.io`.
 
-This email address delivers to a small security team. Your email will be
+This email address is delivered to a small security team. Your email will be
 acknowledged within 24 hours, and you’ll receive a more detailed response to
 your email, within 48 hours, indicating the next steps in handling your report.
 
 To avoid having your report lost, amid spam, please be sure to use a
 descriptive subject line. After the initial reply to your report, the security
-team will endeavor to keep you informed of the progress being made towards a
+team will endeavor to keep you informed of the progress being made toward a
 fix and full announcement.
 As recommended by [RFPolicy](https://en.wikipedia.org/wiki/RFPolicy), these
 updates will be sent at least every five days.
