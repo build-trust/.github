@@ -17,7 +17,7 @@ runs:
       env:
         PUB_KEY: '${{ inputs.cosign_pub_key }}'
       run: |
-        if cosign verify --key env://PUB_KEY ${{ inputs.image }}; then
+        if cosign verify --key env://PUB_KEY ${{ inputs.image }} --yes; then
           echo "Signature verified"
         else
           echo "Invalid signature"
