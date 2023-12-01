@@ -33,6 +33,18 @@ runs:
   using: "composite"
 
   steps:
+    - name: Check If Nix Is Installed
+      id: nix-status
+      shell: bash
+      run: |
+        if ! which nix; then
+          echo "NIX_STATUS=1"  >> $GITHUB_ENV
+        fi
+
+    - name: Install Nix If There Is No Cache
+      if: ${{ env.NIX_STATUS == 1 }}
+      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+
     - shell: bash
       run: |
         echo "OCKAM_DISABLE_UPGRADE_CHECK=1"  >> $GITHUB_ENV
@@ -63,14 +75,14 @@ runs:
         repository: build-trust/ockam
         path: ockam_bats
 
-    - if: ${{ inputs.build_ockam_binary == 'true' }}
-      uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: "ockam_cli -> target"
-        cache-on-failure: "true"
+    # - if: ${{ inputs.build_ockam_binary == 'true' }}
+    #   uses: Swatinem/rust-cache@v2
+    #   with:
+    #     workspaces: "ockam_cli -> target"
+    #     cache-on-failure: "true"
 
     - if: ${{ inputs.build_ockam_binary == 'true' }}
-      shell: bash
+      shell: nix develop ./tools/nix#rust --command bash {0}
       working-directory: ockam_cli
       run: |
         set -ex
@@ -88,13 +100,13 @@ runs:
         SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
         ls /github/home
 
-    - shell: bash
-      working-directory: ockam_bats/implementations/rust/ockam/ockam_command/tests
+    - shell: nix develop ./tools/nix#rust --command bash {0}
+      working-directory: ockam_bats
       run: |
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats bats;
+        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats;
 
         echo "Bats passed...."
 
