@@ -43,7 +43,14 @@ runs:
 
     - name: Install Nix If There Is No Cache
       if: ${{ env.NIX_STATUS == 1 }}
-      uses: DeterminateSystems/nix-installer-action@3ebd1aebb47f95493b62de6eec0cac3cd74e50a9
+      shell: bash
+      run: |
+        curl -L https://nixos.org/nix/install | sh -s -- --daemon
+        echo "extra-experimental-features = flakes" >> /etc/nix/nix.conf
+        echo "extra-experimental-features = nix-command" >> /etc/nix/nix.conf
+
+        echo "/nix/var/nix/profiles/per-user/root/profile/bin" >> $GITHUB_PATH
+        echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
 
     - shell: bash
       run: |
@@ -75,11 +82,11 @@ runs:
         repository: build-trust/ockam
         path: ockam_bats
 
-    # - if: ${{ inputs.build_ockam_binary == 'true' }}
-    #   uses: Swatinem/rust-cache@v2
-    #   with:
-    #     workspaces: "ockam_cli -> target"
-    #     cache-on-failure: "true"
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "ockam_cli -> target"
+        cache-on-failure: "true"
 
     - if: ${{ inputs.build_ockam_binary == 'true' }}
       shell: nix develop ./tools/nix#rust --command bash {0}
@@ -90,13 +97,14 @@ runs:
 
         cargo build --locked --bin ockam
 
-        echo "PATH=$(pwd)/target/debug:$PATH" >> $GITHUB_ENV
+        echo "$(pwd)/target/debug" >> $GITHUB_PATH
         ./target/debug/ockam --version
 
     - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         set -ex
+        ockam --version
         SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
         ls /github/home
 
@@ -120,8 +128,6 @@ runs:
       shell: bash
       run: |
         set -ex
-
-        ls $HOME/.bats-tests
 
         echo "Clearing resources......"
         ockam space list --output json
