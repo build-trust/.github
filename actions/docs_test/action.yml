@@ -72,4 +72,4 @@ runs:
           export OCKAM_CONTROLLER_ADDR="${{ inputs.orchestrator_controller_addr }}"
         fi
 
-        nix shell nixpkgs/nixos-23.11#python311Packages.flask --command sh -c "find ${GITHUB_WORKSPACE}/ockam-documentation -name "*.md" | OCKAM_ENROLL_SCRIPT="/artifacts-scripts" cargo run"
+        nix shell nixpkgs/nixos-23.11#python311Packages.flask nixpkgs/nixos-23.11#postgresql --command sh -c "find ${GITHUB_WORKSPACE}/ockam-documentation -name "*.md" | OCKAM_ENROLL_SCRIPT="/artifacts-scripts" cargo run"
