@@ -14,6 +14,10 @@ inputs:
   orchestrator_controller_id:
     description: "Orchestrator Controller Identifier"
     required: false
+  download_ockam_latest_cli:
+    description: "Download Latest Ockam CLI"
+    required: false
+    default: true
 
 runs:
   using: "composite"
@@ -34,6 +38,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
       shell:  nix shell nixpkgs#gh --command bash {0}
+      if: ${{ inputs.download_ockam_latest_cli == 'true' }}
       run: |
         set -ex
         gh release download ${{ inputs.git_tag }} -p ockam.x86_64-unknown-linux-musl -R ${{ github.repository_owner }}/ockam
