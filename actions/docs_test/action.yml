@@ -1,0 +1,70 @@
+name: Run Documentation Tests
+description: Run Documentation Tests
+
+inputs:
+  git_tag:
+    description: "Ockam release git tag to download CLI"
+    required: true
+  github_token:
+    description: "Github Token Used To Download Release Asset"
+    required: true
+  orchestrator_controller_addr:
+    description: "Orchestrator Controller Address"
+    required: false
+  orchestrator_controller_id:
+    description: "Orchestrator Controller Identifier"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Ockam
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        path: ockam
+    
+    - name: Checkout Ockam Documentation Repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        repository: build-trust/ockam-documentation
+        path: ockam-documentation
+        ref: metaclips/add_cli_bats_test
+
+    - name: Download Draft Release Asset
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      shell:  nix shell nixpkgs#gh --command bash {0}
+      run: |
+        set -ex
+        gh release download ${{ inputs.git_tag }} -p ockam.x86_64-unknown-linux-musl -R ${{ github.repository_owner }}/ockam
+        mv ockam.x86_64-unknown-linux-musl ockam_cli
+        chmod +x ockam_cli
+        cp ockam_cli /usr/bin/ockam
+        chmod +x /usr/bin/ockam
+
+        ls /usr/bin
+
+    - name: Get Postgres URL
+      shell: nix shell nixpkgs#dnsutils --command bash {0}
+      run: |
+        set -ex
+        ls /usr/bin
+        ockam --version
+        postgres_port=$(dig +short postgres)
+        echo "===${postgres_port}==="
+        echo "PG_HOST=$postgres_port" >> $GITHUB_ENV
+
+    - name: Run Docs Test
+      working-directory: ockam/tools/docs/doc_ockam_io_checker
+      shell: nix develop ../../nix#rust --command bash {0}
+      run: |
+        set -ex
+        ls ${GITHUB_WORKSPACE}
+        nix-store --delete
+
+        if [[ -n "${{ inputs.orchestrator_controller_id }}" && -n "${{ inputs.orchestrator_controller_addr }}" ]]; then
+          export OCKAM_CONTROLLER_IDENTITY_ID="${{ inputs.orchestrator_controller_id }}" 
+          export OCKAM_CONTROLLER_ADDR="${{ inputs.orchestrator_controller_addr }}"
+        fi
+
+        nix shell nixpkgs/nixos-23.11#python311Packages.flask --command sh -c "find ${GITHUB_WORKSPACE}/ockam-documentation -name "*.md" | OCKAM_ENROLL_SCRIPT="/artifacts-scripts" cargo run"
