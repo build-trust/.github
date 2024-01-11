@@ -30,7 +30,7 @@ runs:
     - name: Checkout Ockam Documentation Repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
-        repository: build-trust/ockam-documentation
+        repository: metaclips/ockam-documentation
         path: ockam-documentation
         ref: metaclips/add_cli_bats_test
 
