@@ -114,7 +114,7 @@ runs:
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 DOCS_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats;
+        nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql cargo python311Packages.psycopg2 python311Packages.selenium python311Packages.flask ]; }' --command sh -c 'BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 DOCS_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats'
 
         echo "Bats passed...."
 
