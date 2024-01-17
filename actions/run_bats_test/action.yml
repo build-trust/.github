@@ -114,20 +114,23 @@ runs:
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats;
+        BATS_TEST_RETRIES=2 ORCHESTRATOR_TESTS=1 LONG_TESTS=1 DOCS_TESTS=1 bats ./implementations/rust/ockam/ockam_command/tests/bats;
 
         echo "Bats passed...."
 
     - if: ${{ always() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
-        path: /github/home/.bats-tests
+        path: /github/home/.bats-tests/*
 
     - if: ${{ always() }}
       shell: bash
       run: |
         set -ex
+
+        ls /github/home/
+        ls /github/home/.bats-tests/
 
         echo "Clearing resources......"
         ockam space list --output json
