@@ -96,9 +96,9 @@ runs:
         echo $OCKAM_DISABLE_UPGRADE_CHECK
 
         cargo build --locked --bin ockam
+        mv ./target/debug/ockam /usr/bin
 
-        echo "$(pwd)/target/debug" >> $GITHUB_PATH
-        ./target/debug/ockam --version
+        cargo clean
 
     - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
