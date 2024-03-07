@@ -25,7 +25,7 @@ runs:
         PRIVATE_KEY: '${{ inputs.cosign_private_key }}'
         COSIGN_PASSWORD: '${{ inputs.cosign_password }}'
       run: |
-        if  cosign sign --key env://PRIVATE_KEY ${{ inputs.image }} -a "org=build-trust" -a "ref=${{ inputs.ref }}"; then
+        if  cosign sign --key env://PRIVATE_KEY ${{ inputs.image }} -a "org=build-trust" -a "ref=${{ inputs.ref }}" -y; then
           echo "Signature verified"
         else
           echo "Invalid signature"
