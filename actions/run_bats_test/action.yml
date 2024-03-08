@@ -95,9 +95,10 @@ runs:
         set -ex
         echo $OCKAM_DISABLE_UPGRADE_CHECK
 
+        cargo clean
+
         cargo build --locked --bin ockam
         mv ./target/debug/ockam /usr/bin
-
         cargo clean
 
     - shell: bash
