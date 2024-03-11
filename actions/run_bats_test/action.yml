@@ -88,6 +88,10 @@ runs:
         workspaces: "ockam_cli -> target"
         cache-on-failure: "true"
 
+    - name: Nix Collect Garbage
+      shell: bash
+      run: nix-collect-garbage
+
     - if: ${{ inputs.build_ockam_binary == 'true' }}
       shell: nix develop ./tools/nix#rust --command bash {0}
       working-directory: ockam_cli
