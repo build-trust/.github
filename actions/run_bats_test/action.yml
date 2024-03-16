@@ -83,7 +83,10 @@ runs:
         path: ockam_bats
 
     - if: ${{ inputs.build_ockam_binary == 'true' }}
-      uses: Swatinem/rust-cache@v2
+      uses: dtolnay/rust-toolchain@stable
+
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
       with:
         workspaces: "ockam_cli -> target"
         cache-on-failure: "true"
