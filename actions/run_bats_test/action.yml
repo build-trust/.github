@@ -55,8 +55,6 @@ runs:
     - shell: bash
       run: |
         echo "OCKAM_DISABLE_UPGRADE_CHECK=1"  >> $GITHUB_ENV
-        echo "OCKAM_OPENTELEMETRY_EXPORT=true"  >> $GITHUB_ENV
-        echo "OCKAM_DEVELOPER=true"  >> $GITHUB_ENV
         echo "====> ${{ inputs.ockam_repository_ref }} Ockam ref here"
         if [[ -n "${{ inputs.controller_id }}" ]]; then
           echo "OCKAM_CONTROLLER_IDENTITY_ID=${{ inputs.controller_id }}" >> $GITHUB_ENV
