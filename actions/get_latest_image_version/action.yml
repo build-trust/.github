@@ -17,7 +17,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
         repository: fsaintjacques/semver-tool
         ref: 20028cb53f340a300b460b423e43f0eac13bcd9a # checkout to 3.2.0

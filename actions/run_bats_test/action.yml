@@ -70,13 +70,13 @@ runs:
 
         ls /github/home
 
-    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
         ref: ${{ inputs.ockam_cli_repository_ref != '' && inputs.ockam_cli_repository_ref || inputs.ockam_repository_ref }}
         repository: build-trust/ockam
         path: ockam_cli
 
-    - uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
         ref: ${{ inputs.ockam_repository_ref }}
         repository: build-trust/ockam
