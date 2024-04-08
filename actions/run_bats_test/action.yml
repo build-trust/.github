@@ -110,7 +110,7 @@ runs:
       run: |
         set -ex
         ockam --version
-        SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
+        QUIET=1 OCKAM_LOGGING=0 OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
         ls /github/home
 
     - shell: nix develop ./tools/nix#rust --command bash {0}
