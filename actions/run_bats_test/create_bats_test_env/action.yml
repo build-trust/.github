@@ -1,0 +1,126 @@
+name: Create Bats Test Env
+description: Create Bats Test Env
+
+inputs:
+  perform_ockam_enroll:
+    description: "Perform Ockam Enroll"
+    required: true
+  ockam_repository_ref:
+    description: "Ref From Which To Run Bats Test"
+    required: false
+  ockam_cli_repository_ref:
+    description: "Ref From Which To Build Ockam Command"
+    required: false
+  controller_id:
+    description: "Controller ID Of Ockam Command"
+    required: false
+  controller_addr:
+    description: "Controller Address Of Ockam Command"
+    required: false
+  build_ockam_binary:
+    description: "Build Ockam Binary"
+    required: true
+    default: 'true'
+  script_path:
+    description: "Enrollment Script Path"
+    required: true
+  email_address:
+    description: "Emaill Address To Run Ockam Enroll"
+    required: false
+    default: "test@ockam.io"
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Check If Nix Is Installed
+      id: nix-status
+      shell: bash
+      run: |
+        if ! which nix; then
+          echo "NIX_STATUS=1"  >> $GITHUB_ENV
+        fi
+
+    - name: Install Nix If There Is No Cache
+      if: ${{ env.NIX_STATUS == 1 }}
+      shell: bash
+      run: |
+        curl -L https://nixos.org/nix/install | sh -s -- --daemon
+        echo "extra-experimental-features = flakes" >> /etc/nix/nix.conf
+        echo "extra-experimental-features = nix-command" >> /etc/nix/nix.conf
+
+        echo "/nix/var/nix/profiles/per-user/root/profile/bin" >> $GITHUB_PATH
+        echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+
+    - shell: bash
+      run: |
+        echo "OCKAM_DISABLE_UPGRADE_CHECK=1"  >> $GITHUB_ENV
+        echo "====> ${{ inputs.ockam_repository_ref }} Ockam ref here"
+        if [[ -n "${{ inputs.controller_id }}" ]]; then
+          echo "OCKAM_CONTROLLER_IDENTITY_ID=${{ inputs.controller_id }}" >> $GITHUB_ENV
+          echo "OCKAM_CONTROLLER_ADDR=${{ inputs.controller_addr }}" >> $GITHUB_ENV
+        fi
+
+    - if: ${{ inputs.perform_ockam_enroll == 'false' }}
+      shell: bash
+      run: |
+        set -ex
+        mkdir /github/home/.local
+        cp -r /configs/.ockam /github/home
+
+        ls /github/home
+
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        ref: ${{ inputs.ockam_cli_repository_ref != '' && inputs.ockam_cli_repository_ref || inputs.ockam_repository_ref }}
+        repository: build-trust/ockam
+        path: ockam_cli
+
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        ref: ${{ inputs.ockam_repository_ref }}
+        repository: build-trust/ockam
+        path: ockam_bats
+
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      uses: dtolnay/rust-toolchain@stable
+
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
+      with:
+        workspaces: "ockam_cli -> target"
+        cache-on-failure: "true"
+
+    - name: Nix Collect Garbage
+      shell: bash
+      run: nix-collect-garbage
+
+    - if: ${{ inputs.build_ockam_binary == 'true' }}
+      shell: bash
+      working-directory: ockam_cli
+      run: |
+        set -ex
+        echo $OCKAM_DISABLE_UPGRADE_CHECK
+        cargo install --version 0.2.5 cross
+
+        cross build --locked --bin ockam --target x86_64-unknown-linux-musl
+
+    # - if: ${{ inputs.build_ockam_binary == 'true' }}
+    #   shell: bash
+    #   working-directory: ockam_cli
+    #   run: |
+    #     echo "PATH=$PATH:$(pwd)/target/debug" >> $GITHUB_ENV
+    #     echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
+
+    - uses: docker://ghcr.io/build-trust/artifacts-helper:latest
+      if: ${{ inputs.perform_ockam_enroll == 'true' }}
+      with: 
+        args: |
+          set -ex
+          export PATH=$(pwd)/ockam_cli/target/x86_64-unknown-linux-musl/debug:$PATH
+          ockam --version
+
+          QUIET=1 OCKAM_LOGGING=0 OCKAM_DEVELOPER=true OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
+          # nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ python311Packages.selenium expect chromedriver google-chrome ]; }' --command sh -c "./file.sh"
+          # # QUIET=1 OCKAM_LOGGING=0 OCKAM_DEVELOPER=true OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
+          # ls /github/home

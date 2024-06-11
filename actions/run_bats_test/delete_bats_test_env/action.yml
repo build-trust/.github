@@ -1,0 +1,62 @@
+name: Delete Bats Test ENV
+description: Delete Bats Test ENV
+
+inputs:
+  controller_addr:
+    description: "Controller Address Of Ockam Command"
+    required: false
+  perform_ockam_enroll:
+    description: "Perform Ockam Enroll"
+    required: true
+
+
+runs:
+  using: "composite"
+
+  steps:
+    - if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
+        path: /github/home/.bats-tests/*
+
+    - if: ${{ always() }}
+      shell: bash
+      run: |
+        set -ex
+
+        ls /github/home/
+        ls /github/home/.bats-tests/
+
+        echo "Clearing resources......"
+        ockam space list --output json
+
+        projects=$(ockam project list --output json)
+        projects_length=$(jq '.|length' <<< $projects)
+
+        default_project_space_name=""
+
+        for (( c=0; c<$projects_length; c++ )); do
+          project_space_name=$(jq -r ".[$c].space_name" <<< $projects)
+          project_name=$(jq -r ".[$c].name" <<< $projects)
+
+          if [[ "$project_name" != "default" || ${{ inputs.perform_ockam_enroll }} == 'true' ]]; then
+            ockam project delete $project_space_name $project_name --yes || ockam project delete $project_space_name $project_name
+            continue
+          fi
+
+          # Save default project space name
+          default_project_space_name=$project_space_name
+        done
+
+        space_names=$(ockam space list --output json)
+        space_name_length=$(jq '.|length' <<< $space_names)
+
+        for (( c=0; c<$space_name_length; c++ )); do
+          space_name=$(jq -r ".[$c].name" <<< $space_names)
+          if [[ $space_name == $default_project_space_name ]]; then
+            continue
+          fi
+
+          ockam space delete $space_name --yes || ockam space delete $space_name
+        done
