@@ -46,8 +46,8 @@ runs:
       shell: bash
       run: |
         curl -L https://nixos.org/nix/install | sh -s -- --daemon
-        echo "extra-experimental-features = flakes" >> /etc/nix/nix.conf
-        echo "extra-experimental-features = nix-command" >> /etc/nix/nix.conf
+        sudo echo "extra-experimental-features = flakes" >> /etc/nix/nix.conf || echo "extra-experimental-features = flakes"
+        sudo echo "extra-experimental-features = nix-command" >> /etc/nix/nix.conf || echo "extra-experimental-features = nix-command" >> /etc/nix/nix.conf
 
         echo "/nix/var/nix/profiles/per-user/root/profile/bin" >> $GITHUB_PATH
         echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
@@ -107,6 +107,7 @@ runs:
           cross build --locked --bin ockam --target x86_64-unknown-linux-musl
           echo "PATH=$PATH:$(pwd)/target/x86_64-unknown-linux-musl/debug" >> $GITHUB_ENV
         else
+
           nix develop ./tools/nix#rust --command cargo build --locked --bin ockam
           mv ./target/debug/ockam /usr/bin
         fi
@@ -121,22 +122,37 @@ runs:
     - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
-        echo "cd work" >> file.sh
-        echo 'export PATH=$(pwd)/ockam_cli/target/x86_64-unknown-linux-musl/debug:$PATH' >> file.sh
-        echo 'ockam --version;' >> file.sh
+        # Get enrollment code
+        sudo apt install expect || apt install expect
+        export QUIET=1
+        export OCKAM_LOGGING=0
+        export OCKAM_OPENTELEMETRY_EXPORT=0
 
-        echo 'OCKAM_HOME=ockam_home QUIET=1 OCKAM_LOGGING=0 OCKAM_DEVELOPER=true OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh' >> file.sh
-        chmod +x file.sh
+        ockam_enroll_log=$(mktemp)
+
+        ockam identity create default
+        unbuffer bash -c "ockam enroll --identity default" | tee $ockam_enroll_log  &
+        process_id=$!
+
+        enroll_code=$(${{ inputs.script_path }}/get_enroll_code.sh "$ockam_enroll_log")  
+        echo "$enroll_code"
 
         if which docker; then
-          docker run --rm -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/artifacts-helper:latest sh -c ./work/file.sh
-          mkdir ~/.ockam
-          ls ockam_home
-          cp ockam_home/* ~/.ockam
+          docker run --rm -e ACTIVATION_CODE="$enroll_code" -e SCRIPT_DIR="/work/${{ inputs.script_path }}" -e EMAIL_ADDRESS="${{ inputs.email_address }}" -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/artifacts-helper:latest python3 /work/${{ inputs.script_path }}/ockam_enroll.py || (cat geckodriver.log && exit 1)
         else
-          ockam reset -y
-          QUIET=1 OCKAM_LOGGING=0 OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
+          ACTIVATION_CODE="$enroll_code" SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" python3 ${{ inputs.script_path }}/ockam_enroll.py || (cat geckodriver.log && exit 1)
         fi
+
+        sleep 2
+        # Check for exit status
+        if ! wait $process_id; then
+          echo "Ockam enroll failed"
+          cat $ockam_enroll_log
+          exit 1
+        fi
+
+        echo "Ockam enroll was a success"
+        cat $ockam_enroll_log
 
         echo "calling project list again"
         ockam project list
@@ -144,6 +160,5 @@ runs:
         echo "calling project ticket"
         ockam project ticket --no-color --usage-count 1 --expires-in 10m --relay redpanda
 
-        # nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ python311Packages.selenium expect chromedriver google-chrome ]; }' --command sh -c "./file.sh"
-        # # QUIET=1 OCKAM_LOGGING=0 OCKAM_DEVELOPER=true OCKAM_OPENTELEMETRY_EXPORT=0 SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" bash ${{ inputs.script_path }}/ockam_enroll.sh
-        # ls /github/home
+    - shell: bash
+      run: ockam project ticket
