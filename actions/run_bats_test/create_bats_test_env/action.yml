@@ -127,6 +127,7 @@ runs:
         export QUIET=1
         export OCKAM_LOGGING=0
         export OCKAM_OPENTELEMETRY_EXPORT=0
+        export OCKAM_DEFAULT_TIMEOUT=10m
 
         ockam_enroll_log=$(mktemp)
 

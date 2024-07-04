@@ -50,7 +50,7 @@ runs:
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.selenium python311Packages.flask telegraf ]; }' --command sh -c 'ORCHESTRATOR_TESTS=1 bash ./implementations/rust/ockam/ockam_command/tests/bats/run.sh'
+        nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.selenium python311Packages.flask telegraf ]; }' --command sh -c 'ORCHESTRATOR_TESTS=1 OCKAM_DEFAULT_TIMEOUT=10m bash ./implementations/rust/ockam/ockam_command/tests/bats/run.sh'
 
         echo "Bats passed...."
 
