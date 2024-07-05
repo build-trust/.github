@@ -44,13 +44,13 @@ runs:
         script_path: ${{ inputs.script_path }}
         email_address: ${{ inputs.email_address }}
 
-    - shell: nix develop ./tools/nix#rust --command bash {0}
+    - shell: nix --quiet develop ./tools/nix#rust --command bash {0}
       working-directory: ockam_bats
       run: |
         set -ex;
         ockam project list --output json
         ls -a /github/home
-        nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.selenium python311Packages.flask telegraf ]; }' --command sh -c 'ORCHESTRATOR_TESTS=1 OCKAM_DEFAULT_TIMEOUT=10m bash ./implementations/rust/ockam/ockam_command/tests/bats/run.sh'
+        nix --quiet develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.selenium python311Packages.flask telegraf ]; }' --command sh -c 'ORCHESTRATOR_TESTS=1 OCKAM_DEFAULT_TIMEOUT=10m bash ./implementations/rust/ockam/ockam_command/tests/bats/run.sh'
 
         echo "Bats passed...."
 

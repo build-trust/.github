@@ -108,7 +108,7 @@ runs:
           echo "PATH=$PATH:$(pwd)/target/x86_64-unknown-linux-musl/debug" >> $GITHUB_ENV
         else
 
-          nix develop ./tools/nix#rust --command cargo build --locked --bin ockam
+          nix --quiet develop ./tools/nix#rust --command cargo build --locked --bin ockam
           mv ./target/debug/ockam /usr/bin
         fi
 

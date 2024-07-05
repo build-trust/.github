@@ -26,7 +26,6 @@ runs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
         path: ockam
-    
     - name: Checkout Ockam Documentation Repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
@@ -61,7 +60,7 @@ runs:
 
     - name: Run Docs Test
       working-directory: ockam/tools/docs/doc_ockam_io_checker
-      shell: nix develop ./../../nix#tooling --command bash {0}
+      shell: nix --quiet develop ./../../nix#tooling --command bash {0}
       run: |
         set -ex
         ls ${GITHUB_WORKSPACE}
@@ -73,7 +72,7 @@ runs:
 
         touch file.log
 
-        nix develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql cargo python311Packages.psycopg2 python311Packages.selenium python311Packages.flask ]; }' --command sh -c 'find ${GITHUB_WORKSPACE}/ockam-documentation -name "*.md" | OCKAM_ENROLL_SCRIPT="/artifacts-scripts" cargo run || (cat file.log && exit 1)'
+        nix --quiet develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql cargo python311Packages.psycopg2 python311Packages.selenium python311Packages.flask ]; }' --command sh -c 'find ${GITHUB_WORKSPACE}/ockam-documentation -name "*.md" | OCKAM_ENROLL_SCRIPT="/artifacts-scripts" cargo run || (cat file.log && exit 1)'
 
     - name: Output Log
       if: always()
