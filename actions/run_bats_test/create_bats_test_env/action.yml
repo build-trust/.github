@@ -162,4 +162,6 @@ runs:
         ockam project ticket --no-color --usage-count 1 --expires-in 10m --relay redpanda
 
     - shell: bash
-      run: ockam project ticket
+      run: |
+        ockam project show
+        ockam project ticket
