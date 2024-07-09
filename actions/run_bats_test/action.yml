@@ -59,6 +59,7 @@ runs:
         echo "Bats passed...."
 
     - uses: build-trust/.github/actions/run_bats_test/delete_bats_test_env@custom-actions
+      if: always()
       with:
         perform_ockam_enroll: ${{ inputs.perform_ockam_enroll }}
         ockam_repository_ref: ${{ inputs.ockam_repository_ref }}
