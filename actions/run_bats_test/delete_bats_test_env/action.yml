@@ -25,6 +25,12 @@ runs:
       with:
         name: ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
         path: ${{ env.HOME_DIR }}/.bats-tests/*
+    
+    - if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-enroll-logs
+        path: ${{ env.HOME_DIR }}/.ockam/*
 
     - if: ${{ always() }}
       shell: bash
