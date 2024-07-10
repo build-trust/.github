@@ -123,6 +123,7 @@ runs:
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         # Get enrollment code
+        set -ex
         sudo apt install expect || apt install expect
         export QUIET=1
         export OCKAM_LOGGING=0
