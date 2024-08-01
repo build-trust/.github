@@ -120,20 +120,25 @@ runs:
     #     echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
 
     - shell: bash
+      run: |
+        ockam_enroll_log=$(mktemp)
+        echo "OCKAM_ENROLL_LOG=$ockam_enroll_log" >> $GITHUB_ENV
+
+    - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         # Get enrollment code
         set -ex
         sudo apt install expect || apt install expect
-        export QUIET=1
+        # export QUIET=1
         export OCKAM_LOGGING=0
         export OCKAM_OPENTELEMETRY_EXPORT=0
         export OCKAM_DEFAULT_TIMEOUT=10m
 
-        ockam_enroll_log=$(mktemp)
+        ockam_enroll_log=${{ env.OCKAM_ENROLL_LOG }}
 
         ockam identity create default
-        unbuffer bash -c "ockam enroll --identity default" | tee $ockam_enroll_log  &
+        unbuffer bash -c "echo | ockam enroll --identity default" | tee $ockam_enroll_log  &
         process_id=$!
 
         enroll_code=$(${{ inputs.script_path }}/get_enroll_code.sh "$ockam_enroll_log")  
@@ -161,6 +166,17 @@ runs:
 
         echo "calling project ticket"
         ockam project ticket --no-color --usage-count 1 --expires-in 10m --relay redpanda
+
+    - shell: bash
+      run: |
+        UUID=$(openssl rand -hex 8)
+        echo "UNIQUE_ID=$UUID" >> $GITHUB_ENV
+
+    - if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.run_id }}-ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ steps.set-output-job-id.outputs.job_id }}-${{ env.UNIQUE_ID }}
+        path: ${{ env.OCKAM_ENROLL_LOG }}
 
     - shell: bash
       run: |

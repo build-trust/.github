@@ -14,6 +14,11 @@ runs:
   using: "composite"
 
   steps:
+    - shell: bash
+      run: |
+        UUID=$(openssl rand -hex 8)
+        echo "UNIQUE_ID=$UUID" >> $GITHUB_ENV
+
     - if: ${{ always() }}
       shell: bash
       run: |
@@ -23,13 +28,13 @@ runs:
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.run_id }}-ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}
+        name: ${{ github.run_id }}-ockam-bats-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
         path: ${{ env.HOME_DIR }}/.bats-tests/*
     
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.run_id }}-ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-enroll-logs
+        name: ${{ github.run_id }}-ockam-home-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
         path: ${{ env.HOME_DIR }}/.ockam/*
 
     - if: ${{ always() }}
