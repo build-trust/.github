@@ -48,7 +48,7 @@ runs:
         script_path: ${{ inputs.script_path }}
         email_address: ${{ inputs.email_address }}
 
-    - shell: nix --quiet develop ./tools/nix#rust --command bash {0}
+    - shell: nix --quiet develop ./tools/nix#tooling --command bash {0}
       working-directory: ockam_bats
       run: |
         set -ex;
