@@ -27,16 +27,19 @@ inputs:
   build_ockam_binary:
     description: "Build Ockam Binary"
     required: true
-    default: 'true'
+    default: "true"
   bats_suites:
     description: "Bats suites to run"
     required: false
-    default: 'orchestrator_enroll orchestrator serial'
+    default: "orchestrator_enroll orchestrator serial"
 
 runs:
   using: "composite"
 
   steps:
+    - shell: bash
+      run: echo "OCKAM_PRIVILEGED====> $OCKAM_PRIVILEGED"
+
     - uses: build-trust/.github/actions/run_bats_test/create_bats_test_env@custom-actions
       with:
         perform_ockam_enroll: ${{ inputs.perform_ockam_enroll }}
@@ -52,9 +55,10 @@ runs:
       working-directory: ockam_bats
       run: |
         set -ex;
+        whoami
         ockam project list --output json
         ls -a /github/home
-        sudo OCKAM_PATH=$OCKAM_PATH PATH=$PATH BATS_LIB=$BATS_LIB bash implementations/rust/ockam/ockam_command/tests/bats/run.sh orchestrator_as_root_suite
+        ORCHESTRATOR_TESTS=1 ./implementations/rust/ockam/ockam_command/tests/bats/run.sh "orchestrator_enroll" "orchestrator"
         nix --quiet develop --impure --expr 'let pkgs = import (builtins.getFlake "nixpkgs/nixos-23.11") {}; in pkgs.mkShell { buildInputs = with pkgs; [ postgresql python311Packages.psycopg2 python311Packages.selenium python311Packages.flask telegraf ]; }' --command sh -c 'ORCHESTRATOR_TESTS=1 OCKAM_DEFAULT_TIMEOUT=10m bash ./implementations/rust/ockam/ockam_command/tests/bats/run.sh ${{ inputs.bats_suites }}'
 
         echo "Bats passed...."
