@@ -9,7 +9,6 @@ inputs:
     description: "Perform Ockam Enroll"
     required: true
 
-
 runs:
   using: "composite"
 
@@ -30,7 +29,7 @@ runs:
       with:
         name: ${{ github.run_id }}-ockam-bats-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
         path: ${{ env.HOME_DIR }}/.bats-tests/*
-    
+
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
@@ -44,6 +43,9 @@ runs:
 
         ls ${{ env.HOME_DIR }}
         ls ${{ env.HOME_DIR }}/.bats-tests/
+
+        # We wont be removing resources for now
+        exit 0
 
         echo "Clearing resources......"
         ockam space list --output json
