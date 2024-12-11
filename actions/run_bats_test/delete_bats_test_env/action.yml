@@ -41,8 +41,8 @@ runs:
       run: |
         set -ex
 
-        ls ${{ env.HOME_DIR }}
-        ls ${{ env.HOME_DIR }}/.bats-tests/
+        ls -a ${{ env.HOME_DIR }} || true
+        ls ${{ env.HOME_DIR }}/.bats-tests/ || true
 
         # We wont be removing resources for now
         exit 0
