@@ -21,20 +21,26 @@ runs:
     - if: ${{ always() }}
       shell: bash
       run: |
-        home_dir=$(echo "~")
+        set -ex
+        home_dir=$(echo ~)
         echo "HOME_DIR=$home_dir" >> $GITHUB_ENV
+
+        ls $home_dir/.bats-tests/ || true
+        ls $home_dir/.ockam/ || true
 
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ github.run_id }}-ockam-bats-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
-        path: ${{ env.HOME_DIR }}/.bats-tests/*
+        path: ${{ env.HOME_DIR }}/.bats-tests
+        include-hidden-files: true
 
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ github.run_id }}-ockam-home-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
-        path: ${{ env.HOME_DIR }}/.ockam/*
+        path: ${{ env.HOME_DIR }}/.ockam
+        include-hidden-files: true
 
     - if: ${{ always() }}
       shell: bash
