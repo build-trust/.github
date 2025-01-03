@@ -20,7 +20,7 @@ inputs:
   build_ockam_binary:
     description: "Build Ockam Binary"
     required: true
-    default: 'true'
+    default: "true"
   script_path:
     description: "Enrollment Script Path"
     required: true
@@ -37,6 +37,11 @@ runs:
       id: nix-status
       shell: bash
       run: |
+        set -ex
+        echo $HOSTNAME
+        cat /proc/1/cgroup | tail -n 1
+        cat /proc/1/sched | head -1
+
         if ! which nix; then
           echo "NIX_STATUS=1"  >> $GITHUB_ENV
         fi

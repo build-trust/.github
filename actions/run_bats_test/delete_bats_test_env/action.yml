@@ -21,8 +21,12 @@ runs:
     - if: ${{ always() }}
       shell: bash
       run: |
-        home_dir=$(echo "~")
+        set -ex
+        home_dir=$(echo ~)
         echo "HOME_DIR=$home_dir" >> $GITHUB_ENV
+
+        ls $home_dir/.bats-tests/ || true
+        ls $home_dir/.ockam/ || true
 
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
