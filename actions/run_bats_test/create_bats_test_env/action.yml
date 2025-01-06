@@ -175,7 +175,7 @@ runs:
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.run_id }}-ockam-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ steps.set-output-job-id.outputs.job_id }}-${{ env.UNIQUE_ID }}
+        name: ${{ github.run_id }}-ockam-enroll-logs-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ steps.set-output-job-id.outputs.job_id }}-${{ env.UNIQUE_ID }}
         path: ${{ env.OCKAM_ENROLL_LOG }}
 
     - shell: bash

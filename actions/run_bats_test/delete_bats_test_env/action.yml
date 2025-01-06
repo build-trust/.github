@@ -38,7 +38,7 @@ runs:
     - if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ github.run_id }}-ockam-home-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
+        name: ${{ github.run_id }}-ockam-home-directory-${{ inputs.controller_addr == '' && 'prod' || 'dev' }}-${{ inputs.perform_ockam_enroll == 'true' && 'new_enroll' || 'cached_enroll' }}-${{ github.job }}-${{ env.UNIQUE_ID }}
         path: ${{ env.HOME_DIR }}/.ockam
         include-hidden-files: true
 
