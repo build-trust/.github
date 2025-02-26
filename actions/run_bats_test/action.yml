@@ -27,11 +27,11 @@ inputs:
   build_ockam_binary:
     description: "Build Ockam Binary"
     required: true
-    default: 'true'
+    default: "true"
   bats_suites:
     description: "Bats suites to run"
     required: false
-    default: 'orchestrator_enroll orchestrator serial'
+    default: "orchestrator_enroll orchestrator_enrolled orchestrator serial"
 
 runs:
   using: "composite"
