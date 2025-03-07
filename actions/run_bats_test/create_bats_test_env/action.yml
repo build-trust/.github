@@ -28,6 +28,10 @@ inputs:
     description: "Emaill Address To Run Ockam Enroll"
     required: false
     default: "test@ockam.io"
+  docker_image:
+    description: "Docker Image To Run Ockam Enroll"
+    required: false
+    default: "ghcr.io/build-trust/artifacts-helper:latest"
 
 runs:
   using: "composite"
@@ -141,11 +145,28 @@ runs:
         unbuffer bash -c "echo | ockam enroll --identity default" | tee $ockam_enroll_log  &
         process_id=$!
 
-        enroll_code=$(${{ inputs.script_path }}/get_enroll_code.sh "$ockam_enroll_log")  
-        echo "$enroll_code"
+        while true; do
+          sleep 2
+          log=$(cat $ockam_enroll_log)
+
+          val=$(ps aux)
+
+          if ! ps aux | grep "ockam enroll" >/dev/null; then
+            cat $ockam_enroll_log
+            exit 1
+          fi
+
+          regex="([A-Z]+\-[A-Z]+)"
+          if [[ "$log" =~ $regex ]]; then
+            enroll_code="${BASH_REMATCH[1]}"
+            break
+          fi
+        done
+
+        echo "Enroll code is => $enroll_code"
 
         if which docker; then
-          docker run --rm -e ACTIVATION_CODE="$enroll_code" -e SCRIPT_DIR="/work/${{ inputs.script_path }}" -e EMAIL_ADDRESS="${{ inputs.email_address }}" -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/artifacts-helper:latest python3 /work/${{ inputs.script_path }}/ockam_enroll.py || (cat geckodriver.log && exit 1)
+          docker run --rm -e ACTIVATION_CODE="$enroll_code" -e SCRIPT_DIR="/artifacts-scripts" -e EMAIL_ADDRESS="${{ inputs.email_address }}" -e HOST_USER_ID=$(id -u) ${{ inputs.docker_image }} python3 /artifacts-scripts/ockam_enroll.py || (cat geckodriver.log && exit 1)
         else
           ACTIVATION_CODE="$enroll_code" SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" python3 ${{ inputs.script_path }}/ockam_enroll.py || (cat geckodriver.log && exit 1)
         fi
