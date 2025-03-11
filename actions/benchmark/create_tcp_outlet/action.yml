@@ -1,0 +1,74 @@
+name: Create TCP Outlet On SSH Server
+inputs:
+  ssh_host:
+    description: "SSH Host"
+    required: true
+  ssh_user:
+    description: "SSH User"
+    required: true
+  ssh_key_file_path:
+    description: "SSH Key File Path"
+    required: true
+  email_addresses:
+    description: "Email Addresses To Create TCP Inlet"
+    required: true
+  script_path:
+    description: "Enrollment Script Path"
+    required: false
+    default: "./scripts"
+  docker_image:
+    description: "Docker Image With Tools For Enroll"
+    default: "ghcr.io/build-trust/artifacts-helper:latest"
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -ex
+        chmod 600 ${{ inputs.ssh_key_file_path }}
+        mkdir -p ~/.ssh
+        
+        known_host_path=$(echo ~/.ssh/known_hosts)
+        touch "$known_host_path"
+
+        ssh-keyscan ${{ inputs.ssh_host }} >> "$known_host_path"
+
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix --version || (sudo yum update && sudo yum install curl xz -y --skip-broken && curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes && sudo mkdir -p /etc/nix && echo 'extra-experimental-features = flakes nix-command' | sudo tee -a /etc/nix/nix.conf)"
+
+        latest_tag_name=$(curl --fail --silent --show-error "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r '.tag_name')
+        prefix="ockam_"
+        version=${latest_tag_name#"$prefix"}
+
+        curl -LO "https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu"
+        mv ockam.x86_64-unknown-linux-gnu ockam
+        chmod +x ockam
+        mv ockam /usr/local/bin
+
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "curl -LO https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu && mv ockam.x86_64-unknown-linux-gnu ockam && chmod +x ockam && sudo mv ockam /usr/local/bin && ockam reset -y"
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix shell nixpkgs#iperf --command iperf3 -s -D --bind 0.0.0.0 --port 5555"
+
+        emails="${{ inputs.email_addresses }}"
+        emails=(${emails})
+
+        for email in "${emails[@]}"; do
+          PLAN="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
+          echo "Benchmarking $PLAN"
+          
+          # Enroll
+          ockam reset -y
+          curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/build-trust/.github/refs/heads/custom-actions/actions/run_bats_test/enroll.sh | DOCKER_IMAGE_FOR_ENROLL="${{ inputs.docker_image }}" EMAIL_ADDRESS="$email" SCRIPT_PATH="${{ inputs.script_path }}"  bash
+
+          # Generate a one time ticket
+          ockam project ticket --usage-count 1 --attribute server --relay server-relay > ticket
+          until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ticket "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:ticket"; do sleep 10; done
+
+          ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}\
+            'bash -s' << EOS
+              export OCKAM_OPENTELEMETRY_EXPORT=false
+              export OCKAM_LOG_LEVEL=error
+              OCKAM_HOME="$PLAN" ockam reset -y
+              OCKAM_HOME="$PLAN" ockam node create --quiet --enrollment-ticket ticket '{"relay": "server-relay", "tcp-outlet": {"to": "127.0.0.1:5555", "allow": "client"}}'
+              sleep 5
+        EOS
+        done

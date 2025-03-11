@@ -1,0 +1,52 @@
+name: Delete Projects On SSH Server
+inputs:
+  email_addresses:
+    description: "Email Addresses To Create TCP Inlet"
+    required: true
+  script_path:
+    description: "Enrollment Script Path"
+    default: "./scripts"
+  docker_image:
+    description: "Docker Image With Tools For Enroll"
+    default: "ghcr.io/build-trust/artifacts-helper:latest"
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -ex
+        latest_tag_name=$(curl --fail --silent --show-error "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r '.tag_name')
+        prefix="ockam_"
+        version=${latest_tag_name#"$prefix"}
+
+        curl -LO "https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu"
+        mv ockam.x86_64-unknown-linux-gnu ockam
+        chmod +x ockam
+        mv ockam /usr/local/bin
+
+        emails="${{ inputs.email_addresses }}"
+        emails=(${emails})
+
+        for email in "${emails[@]}"; do
+          # Enroll
+          ockam reset -y
+          curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/build-trust/.github/refs/heads/custom-actions/actions/run_bats_test/enroll.sh | DOCKER_IMAGE_FOR_ENROLL="${{ inputs.docker_image }}" EMAIL_ADDRESS="$email" SCRIPT_PATH="${{ inputs.script_path }}"  bash
+
+          # Delete project
+          project_details=$(ockam project list --output json)
+          len=$(echo "$project_details" | jq ".|length")
+
+          for ((i=0; i<$len; i++)); do
+            project_name=$(echo $project_details | jq -r ".[$i].name")
+            if [[ $project_name != "default" ]]; then
+                continue
+            fi
+
+            space_name=$(echo $project_details | jq -r ".[$i].space_name")
+            echo "Delete default project with space name $space_name"
+            ockam project delete "$space_name" "$project_name" --yes
+            break
+          done
+
+        done

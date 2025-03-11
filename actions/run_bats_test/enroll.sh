@@ -1,7 +1,6 @@
 # Get enrollment code
 set -ex
 
-echo "$EMAIL_ADDRESS"
 if [[ -z $DOCKER_IMAGE_FOR_ENROLL || -z $EMAIL_ADDRESS ||  -z $SCRIPT_PATH ]]; then
     echo "Please set all variable DOCKER_IMAGE_FOR_ENROLL EMAIL_ADDRESS SCRIPT_PATH"
     exit 1
@@ -13,7 +12,7 @@ export OCKAM_LOGGING=0
 export OCKAM_OPENTELEMETRY_EXPORT=0
 export OCKAM_DEFAULT_TIMEOUT=10m
 
-ockam_enroll_log=${{ env.OCKAM_ENROLL_LOG }}
+ockam_enroll_log=$(mktemp)
 
 ockam identity create default
 unbuffer bash -c "echo | ockam enroll --identity default" | tee $ockam_enroll_log  &
