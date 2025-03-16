@@ -32,7 +32,7 @@ runs:
     - shell: bash
       id: benchmark
       run: |
-          set -e
+          set -ex
 
           chmod 600 ${{ inputs.ssh_key_file_path }}
           mkdir -p ~/.ssh
@@ -59,43 +59,55 @@ runs:
             ockam reset -y
             curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/build-trust/.github/refs/heads/custom-actions/actions/run_bats_test/enroll.sh | DOCKER_IMAGE_FOR_ENROLL="${{ inputs.docker_image }}" EMAIL_ADDRESS="$email" SCRIPT_PATH="${{ inputs.script_path }}"  bash
 
-            ockam project ticket --usage-count 1 --attribute client > ticket
+            ockam project ticket --usage-count 2 --attribute client > ticket
             until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ticket "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:ticket"; do sleep 10; done
 
             ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}\
               'bash -s' << EOS
+                set -ex
                 export OCKAM_OPENTELEMETRY_EXPORT=false
                 export OCKAM_LOG_LEVEL=error
                 OCKAM_HOME="${PLAN}_enroll" ockam reset -y
-                OCKAM_HOME="${PLAN}_enroll" ockam node create --quiet --enrollment-ticket ticket '{"tcp-inlet": {"from": "127.0.0.1:6666", "allow": "server", "via": "server-relay"}}'
+                OCKAM_HOME="${PLAN}_enroll" ockam node create --enrollment-ticket ticket "
+                  name: client
+                  tcp-inlets:
+                    echo_inlet:
+                      from: 127.0.0.1:40001
+                      allow: server
+                      to: /project/default/service/forward_to_server-relay/secure/api/service/echo_outlet
+                    null_outlet:
+                      from: 127.0.0.1:50001
+                      allow: server
+                      to: /project/default/service/forward_to_server-relay/secure/api/service/null_outlet
+                "
+
+                # OCKAM_HOME="${PLAN}_enroll" ockam node create --quiet --enrollment-ticket ticket '{"tcp-inlet": {"from": "127.0.0.1:40001", "allow": "server", "to": "/project/default/service/forward_to_server-relay/secure/api/service/echo_outlet"}}'
+                # OCKAM_HOME="${PLAN}_enroll" ockam node create --quiet --enrollment-ticket ticket '{"tcp-inlet": {"from": "127.0.0.1:50001", "allow": "server", "to": "/project/default/service/forward_to_server-relay/secure/api/service/null_outlet"}}'
                 sleep 5
           EOS
 
-            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix shell nixpkgs#iperf3 --command iperf3 --client 127.0.0.1 --port 6666"
-            result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix shell nixpkgs#iperf3 --command iperf3 --client 127.0.0.1 --port 6666 --json")
+            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40000"
+            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10 127.0.0.1:50000"
+
+            throughput_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10  127.0.0.1:50001")
+            latency_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40001")
             ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "OCKAM_HOME=${PLAN}_enroll ockam reset -y"
-            echo $result
-
-            sender_mean_rtt=$(echo $result | jq -r '.end.streams[0].sender.mean_rtt')
-            senders_bit_rate=$(echo $result | jq -r '.end.sum_sent.bits_per_second')
-            senders_transfer=$(echo $result | jq -r '.end.sum_sent.bytes')
-            senders_retransmits=$(echo $result | jq -r '.end.sum_sent.retransmits')
-
-            receivers_bit_rate=$(echo $result | jq -r '.end.sum_received.bits_per_second')
-            receiver_transfer=$(echo $result | jq -r '.end.sum_received.bytes')
+            echo "$latency_result"
+            echo "$throughput_result"
 
             id="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
 
             benchmark_output=$(cat <<EOF
           ${benchmark_output}
 
-          • Plan: $id 
-            • Sender Mean RTT: $(printf "%.2f" "$(echo "$sender_mean_rtt / 1000" | nix shell nixpkgs#bc --command bc -l)") ms
-            • Senders BitRate: $(printf "%.2f" "$(echo "$senders_bit_rate / 1024 / 1024" | nix shell nixpkgs#bc --command bc -l)") Mbits/sec
-            • Senders Transfer: $(printf "%.2f" "$(echo "$senders_transfer / 1024 / 1024" | nix shell nixpkgs#bc --command bc -l)") MB
-            • Senders Retransmits: $senders_retransmits
-            • Receivers BitRate: $(printf "%.2f" "$(echo "$receivers_bit_rate / 1024 / 1024" | nix shell nixpkgs#bc --command bc -l)") Mbits/sec
-            • Receiver Transfer: $(printf "%.2f" "$(echo "$receiver_transfer / 1024 / 1024" | nix shell nixpkgs#bc --command bc -l)") MB
+          • Plan: \`$id\`
+          \`\`\`
+          • Latency
+          $latency_result
+
+          • Throughput
+          $throughput_result
+          \`\`\`
           EOF
           )
           done

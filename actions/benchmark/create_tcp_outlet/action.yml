@@ -15,7 +15,7 @@ inputs:
   script_path:
     description: "Enrollment Script Path"
     required: false
-    default: "./scripts"
+    default: "/artifacts-scripts"
   docker_image:
     description: "Docker Image With Tools For Enroll"
     default: "ghcr.io/build-trust/artifacts-helper:latest"
@@ -23,30 +23,47 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Checkout To Ockam Repo
+      uses: actions/checkout@bf085276cecdb0cc76fbbe0687a5a0e786646936
+      with:
+        repository: build-trust/ockam
+        path: ockam
+
+    - uses: dtolnay/rust-toolchain@stable
     - shell: bash
       run: |
         set -ex
         chmod 600 ${{ inputs.ssh_key_file_path }}
         mkdir -p ~/.ssh
-        
+
         known_host_path=$(echo ~/.ssh/known_hosts)
         touch "$known_host_path"
 
         ssh-keyscan ${{ inputs.ssh_host }} >> "$known_host_path"
+
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test -h" || 
+          (cargo install --version 0.2.5 cross && cd ockam && cross build --release --bin tcp-test && cd - &&
+            until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ./ockam/target/x86_64-unknown-linux-gnu/release/tcp-test "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:tcp-test"; do sleep 10; done && 
+            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "chmod +x tcp-test && sudo mv tcp-test /usr/local/bin")
 
         ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix --version || (sudo yum update && sudo yum install curl xz -y --skip-broken && curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes && sudo mkdir -p /etc/nix && echo 'extra-experimental-features = flakes nix-command' | sudo tee -a /etc/nix/nix.conf)"
 
         latest_tag_name=$(curl --fail --silent --show-error "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r '.tag_name')
         prefix="ockam_"
         version=${latest_tag_name#"$prefix"}
+        # version="v0.148.0"
 
         curl -LO "https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu"
-        mv ockam.x86_64-unknown-linux-gnu ockam
-        chmod +x ockam
-        mv ockam /usr/local/bin
+        sudo mv ockam.x86_64-unknown-linux-gnu /usr/bin/ockam
+        sudo chmod +x /usr/bin/ockam
+        ockam --help
 
-        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "curl -LO https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu && mv ockam.x86_64-unknown-linux-gnu ockam && chmod +x ockam && sudo mv ockam /usr/local/bin && ockam reset -y"
-        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "nix shell nixpkgs#iperf --command iperf3 -s -D --bind 0.0.0.0 --port 5555"
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "curl -LO https://downloads.ockam.io/command/$version/ockam.x86_64-unknown-linux-gnu && mv ockam.x86_64-unknown-linux-gnu ockam && chmod +x ockam && sudo mv ockam /usr/local/bin && ockam reset -y && sudo yum update && sudo yum install tmux -y --skip-broken"
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tmux kill-session -t echo_server" || true
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tmux kill-session -t null_server" || true
+
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tmux new-session -d -s echo_server 'tcp-test echo 40000; exec bash'"
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tmux new-session -d -s null_server 'tcp-test null 50000; exec bash'"
 
         emails="${{ inputs.email_addresses }}"
         emails=(${emails})
@@ -54,21 +71,34 @@ runs:
         for email in "${emails[@]}"; do
           PLAN="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
           echo "Benchmarking $PLAN"
-          
+
           # Enroll
           ockam reset -y
           curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/build-trust/.github/refs/heads/custom-actions/actions/run_bats_test/enroll.sh | DOCKER_IMAGE_FOR_ENROLL="${{ inputs.docker_image }}" EMAIL_ADDRESS="$email" SCRIPT_PATH="${{ inputs.script_path }}"  bash
 
           # Generate a one time ticket
-          ockam project ticket --usage-count 1 --attribute server --relay server-relay > ticket
+          ockam project ticket --usage-count 2 --attribute server --relay server-relay > ticket
           until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ticket "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:ticket"; do sleep 10; done
 
           ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}\
             'bash -s' << EOS
+              set -ex
               export OCKAM_OPENTELEMETRY_EXPORT=false
               export OCKAM_LOG_LEVEL=error
               OCKAM_HOME="$PLAN" ockam reset -y
-              OCKAM_HOME="$PLAN" ockam node create --quiet --enrollment-ticket ticket '{"relay": "server-relay", "tcp-outlet": {"to": "127.0.0.1:5555", "allow": "client"}}'
+              OCKAM_HOME="$PLAN" ockam node create --enrollment-ticket ticket "
+                name: server
+                relay: server-relay
+                tcp-outlets:
+                  echo_outlet:
+                    to: 127.0.0.1:40000
+                    allow: client
+                  null_outlet:
+                    to: 127.0.0.1:50000
+                    allow: client
+              "
+              # OCKAM_HOME="$PLAN" ockam node create --quiet --enrollment-ticket ticket '{"relay": "server-relay", "tcp-outlet": {"to": "127.0.0.1:40000", "allow": "client"}}'
+              # OCKAM_HOME="$PLAN" ockam node create --quiet --enrollment-ticket ticket '{"relay": "server-relay", "tcp-outlet": {"to": "127.0.0.1:50000", "allow": "client"}}'
               sleep 5
         EOS
         done
