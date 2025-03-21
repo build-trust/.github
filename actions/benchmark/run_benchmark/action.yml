@@ -19,7 +19,15 @@ inputs:
   docker_image:
     description: "Docker Image With Tools For Enroll"
     default: "ghcr.io/build-trust/artifacts-helper:latest"
-
+  slack_channel:
+    description: "Slack Channel"
+    required: true
+  slack_oauth:
+    description: "Slack OAuth"
+    required: true
+  slack_thread_id:
+    description: "Slack Thread ID"
+    required: true
 
 outputs:
   benchmark_results: 
@@ -46,11 +54,58 @@ runs:
           emails="${{ inputs.email_addresses }}"
           emails=(${emails})
 
+          ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
+            'bash -s' << EOS
+              set -ex
+              export OCKAM_OPENTELEMETRY_EXPORT=false
+              export OCKAM_LOG_LEVEL=error
+
+              OCKAM_HOME="LOCAL" ockam node create "
+                name: client
+                tcp-inlets:
+                  echo_inlet:
+                    from: 127.0.0.1:40001
+                    to: /node/server/secure/api/service/echo_outlet
+                  null_outlet:
+                    from: 127.0.0.1:50001
+                    to: /node/server/secure/api/service/null_outlet
+              "
+              sleep 5
+          EOS
+
+          function send_notification() {
+            json_string=$( jq --null-input \
+              --arg text "$1" \
+              --arg channel "${{ inputs.slack_channel }}" \
+              --arg thread_ts "${{ inputs.slack_thread_id }}" \
+              '{"text": $text, "channel": $channel, "thread_ts": $thread_ts, "reply_broadcast": "true"}')
+
+
+            slack_response=$(curl -s -X POST 'https://slack.com/api/chat.postMessage' \
+              -H "Authorization: Bearer ${{ inputs.slack_oauth }}" \
+              -H "Content-Type: application/json" \
+              -d "$json_string")
+          }
+
+          throughput_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10  127.0.0.1:50001")
+          latency_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40001")
+          ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "OCKAM_HOME=LOCAL ockam reset -y"
+          echo "$latency_result"
+          echo "$throughput_result"
+
           benchmark_output=$(cat <<EOF
-          \`Ockam Project Plans Benchmark Result\`
-          ----------------------------------------
+          \`• Without Orchestrator Project\`
+          \`\`\`
+          • Latency
+          $latency_result
+
+          • Throughput
+          $throughput_result
+          \`\`\`
           EOF
           )
+
+          send_notification "$benchmark_output"
 
           for email in "${emails[@]}"; do
             PLAN="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
@@ -62,7 +117,7 @@ runs:
             ockam project ticket --usage-count 2 --attribute client > ticket
             until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ticket "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:ticket"; do sleep 10; done
 
-            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}\
+            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
               'bash -s' << EOS
                 set -ex
                 export OCKAM_OPENTELEMETRY_EXPORT=false
@@ -86,9 +141,6 @@ runs:
                 sleep 5
           EOS
 
-            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40000"
-            ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10 127.0.0.1:50000"
-
             throughput_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10  127.0.0.1:50001")
             latency_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40001")
             ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "OCKAM_HOME=${PLAN}_enroll ockam reset -y"
@@ -98,8 +150,6 @@ runs:
             id="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
 
             benchmark_output=$(cat <<EOF
-          ${benchmark_output}
-
           • Plan: \`$id\`
           \`\`\`
           • Latency
@@ -110,6 +160,8 @@ runs:
           \`\`\`
           EOF
           )
+
+          send_notification "$benchmark_output"
           done
 
           echo "Successfully tested all plans"

@@ -68,6 +68,23 @@ runs:
         emails="${{ inputs.email_addresses }}"
         emails=(${emails})
 
+        ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
+        'bash -s' << EOS
+          set -ex
+          export OCKAM_OPENTELEMETRY_EXPORT=false
+          export OCKAM_LOG_LEVEL=error
+          OCKAM_HOME="LOCAL" ockam reset -y
+          OCKAM_HOME="LOCAL" ockam node create "
+            name: server
+            tcp-outlets:
+              echo_outlet:
+                to: 127.0.0.1:40000
+              null_outlet:
+                to: 127.0.0.1:50000
+          "
+          sleep 5
+        EOS
+
         for email in "${emails[@]}"; do
           PLAN="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
           echo "Benchmarking $PLAN"
@@ -80,7 +97,7 @@ runs:
           ockam project ticket --usage-count 2 --attribute server --relay server-relay > ticket
           until scp -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ticket "${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:ticket"; do sleep 10; done
 
-          ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}\
+          ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
             'bash -s' << EOS
               set -ex
               export OCKAM_OPENTELEMETRY_EXPORT=false
