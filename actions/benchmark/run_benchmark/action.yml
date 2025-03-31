@@ -28,11 +28,14 @@ inputs:
   slack_thread_id:
     description: "Slack Thread ID"
     required: true
+  csv_file_path:
+    description: "CSV File Path"
+    required: false
 
 outputs:
-  benchmark_results: 
-    description: Benchmark Results
-    value: ${{ steps.benchmark.outputs.BENCHMARK_OUTPUT }}
+  csv_benchmark_results: 
+    description: Benchmark Results In CSV Format
+    value: ${{ steps.benchmark.outputs.CSV_BENCHMARK_OUTPUT }}
 
 runs:
   using: "composite"
@@ -87,11 +90,23 @@ runs:
               -d "$json_string")
           }
 
+          current_date=$(date +%Y-%m-%d)
+          csv_report=",,,"
+
           throughput_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test throughput --seconds 10  127.0.0.1:50001")
           latency_result=$(ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "tcp-test latency 127.0.0.1:40001")
           ssh -o UserKnownHostsFile="$known_host_path" -i ${{ inputs.ssh_key_file_path }} ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} "OCKAM_HOME=LOCAL ockam reset -y"
           echo "$latency_result"
           echo "$throughput_result"
+
+          latency_avg=$(echo "$latency_result" | grep "Average")
+          throughput_avg=$(echo "$throughput_result" | grep "Average")
+
+          csv_report=$(cat <<EOF
+          $csv_report
+          $current_date,Without Orchestrator Project,\"$latency_avg\",\"$throughput_avg\"
+          EOF
+          )
 
           benchmark_output=$(cat <<EOF
           \`• Without Orchestrator Project\`
@@ -149,6 +164,15 @@ runs:
 
             id="$(echo "$email" | sed 's/benchmark_\(.*\)@ockam.io/\1/i')"
 
+            latency_avg=$(echo "$latency_result" | grep "Average")
+            throughput_avg=$(echo "$throughput_result" | grep "Average")
+
+            csv_report=$(cat <<EOF
+          $csv_report
+          $current_date,\"$id\",\"$latency_avg\",\"$throughput_avg\"
+          EOF
+          )
+
             benchmark_output=$(cat <<EOF
           • Plan: \`$id\`
           \`\`\`
@@ -167,6 +191,6 @@ runs:
           echo "Successfully tested all plans"
           echo $benchmark_output
 
-          echo 'BENCHMARK_OUTPUT<<EOF' >> $GITHUB_OUTPUT
-          echo "$benchmark_output" >> $GITHUB_OUTPUT
+          echo 'CSV_BENCHMARK_OUTPUT<<EOF' >> $GITHUB_OUTPUT
+          echo "$csv_report" >> $GITHUB_OUTPUT
           echo 'EOF' >> $GITHUB_OUTPUT

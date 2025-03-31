@@ -13,14 +13,18 @@ inputs:
   name:
     description: "Name of author"
     required: true
+  working_directory:
+    description: "Working directory"
+    required: false
+    default: "artifacts"
 
 runs:
   using: "composite"
   steps:
     - shell: bash
-      working-directory: artifacts
+      working-directory: ${{ inputs.working_directory }}
       run: |
-        echo ${{ inputs.message }} >> ${{ inputs.csv_filename }}
+        echo "${{ inputs.message }}" >> ${{ inputs.csv_filename }}
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git commit -m "update ${{ inputs.name }} csv by ${{ github.actor }} $(date +'%b %d %Y %T')" -a
