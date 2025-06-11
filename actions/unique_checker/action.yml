@@ -5,9 +5,6 @@ inputs:
   csv_filepath:
     description: "CSV file name"
     required: true
-  sha_column:
-    description: "Column where SHA is located in CSV file"
-    required: true
   path:
     description: "Path to compare git diff"
     required: true
@@ -15,62 +12,55 @@ outputs:
   commit_already_built:
     description: "Confirms if HEAD commit of Ockam repo has any unique change to build upon"
     value: ${{ steps.unique_result.outputs.commit_already_built }}
+  commit_sha:
+    description: "Commit SHA of the HEAD commit of any of the paths that has unique changes"
+    value: ${{ steps.unique_result.outputs.commit_sha }}
 
 runs:
   using: "composite"
   steps:
     - shell: bash
-      run: command -v csvtool &> /dev/null || { echo "csvtool is not installed.  Installing."; sudo apt update; sudo apt install csvtool; }
-
-    - shell: bash
       run: |
         # Check if action is a cron job
         sha=${{ github.event.inputs.commit_sha }}
-        echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
+        echo "COMMIT_ALREADY_BUILT=true" >> $GITHUB_ENV
 
         if [[ ! -z $sha ]]; then
           echo "A workflow dispatch was started"
-          echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
+          echo "COMMIT_ALREADY_BUILT=false" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$sha" >> $GITHUB_ENV
         fi
 
     - shell: bash
       working-directory: ockam
-      if: env.COMMIT_ALREADY_BUILT == 0
+      if: env.COMMIT_ALREADY_BUILT == 'true'
       run: |
         set -x
-        recently_built_commits=($(eval "csvtool col ${{ inputs.sha_column }} ${{ inputs.csv_filepath }}"))
 
+        recently_built_commits=$(cat ${{ inputs.csv_filepath }})
         paths=( ${{ inputs.path }} )
 
+        COMMIT_ALREADY_BUILT='false'
+
         for path in ${paths[@]}; do
-          commit_unique=true
-          for commit in ${recently_built_commits[@]:1}; do
-            echo "Checking commit $commit"
-            # Skip default branch
-            if [[ $commit == "develop" ]]; then
-              continue
-            fi
+          last_commit_for_path=$(head -1 <(git rev-list HEAD -- "$path"))
+          echo "Last commit for path $path: $last_commit_for_path"
+          COMMIT_SHA="$last_commit_for_path"
 
-            # Check if specified commit in csv is valid.
-            if git rev-parse --verify $commit; then
-              if git diff $commit --quiet --name-status -- $path; then
-                commit_unique=false
-                echo "commit already built by $path"
-                break
-              fi
-              commit_unique=true
-            fi
-          done
-
-          if $commit_unique; then
-            echo "$path made changes CI isn't aware of"
-            echo "COMMIT_ALREADY_BUILT=1" >> $GITHUB_ENV
-            exit 0
+          if [[ "$recently_built_commits" =~ "$last_commit_for_path" ]]; then
+            echo "Commit $last_commit_for_path has already been built."
+            COMMIT_ALREADY_BUILT='true'
+            break
+          else
+            echo "Commit $last_commit_for_path is unique for path $path."
           fi
         done
 
-        echo "COMMIT_ALREADY_BUILT=0" >> $GITHUB_ENV
+        echo "COMMIT_ALREADY_BUILT=$COMMIT_ALREADY_BUILT" >> $GITHUB_ENV
+        echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
 
     - shell: bash
       id: unique_result
-      run: echo "commit_already_built=${COMMIT_ALREADY_BUILT}" >> $GITHUB_OUTPUT
+      run: |
+        echo "commit_already_built=${COMMIT_ALREADY_BUILT}" >> $GITHUB_OUTPUT
+        echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
