@@ -32,6 +32,9 @@ inputs:
     description: "Bats suites to run"
     required: false
     default: "orchestrator_enroll orchestrator_enrolled orchestrator serial"
+  ockam_identity:
+    description: "Ockam Identity To Use For Enrollment"
+    required: false
 
 runs:
   using: "composite"
@@ -47,6 +50,7 @@ runs:
         build_ockam_binary: ${{ inputs.build_ockam_binary }}
         script_path: ${{ inputs.script_path }}
         email_address: ${{ inputs.email_address }}
+        ockam_identity: ${{ inputs.ockam_identity }}
 
     - shell: nix --quiet develop ./tools/nix#rust --command bash {0}
       working-directory: ockam_bats

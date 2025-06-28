@@ -32,6 +32,9 @@ inputs:
     description: "Docker Image To Run Ockam Enroll"
     required: false
     default: "ghcr.io/build-trust/artifacts-helper:latest"
+  ockam_identity:
+    description: "Ockam Identity To Use For Enrollment"
+    required: false
 
 runs:
   using: "composite"
@@ -90,7 +93,7 @@ runs:
       uses: dtolnay/rust-toolchain@stable
 
     - if: ${{ inputs.build_ockam_binary == 'true' }}
-      uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
+      uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
       with:
         workspaces: "ockam_cli -> target"
         cache-on-failure: "true"
@@ -124,69 +127,20 @@ runs:
     #     echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
 
     - shell: bash
-      run: |
-        ockam_enroll_log=$(mktemp)
-        echo "OCKAM_ENROLL_LOG=$ockam_enroll_log" >> $GITHUB_ENV
-
-    - shell: bash
       if: ${{ inputs.perform_ockam_enroll == 'true' }}
       run: |
         # Get enrollment code
         set -ex
-        sudo apt install expect || apt install expect
         # export QUIET=1
         export OCKAM_LOGGING=0
         export OCKAM_OPENTELEMETRY_EXPORT=0
         export OCKAM_DEFAULT_TIMEOUT=10m
-
-        ockam_enroll_log=${{ env.OCKAM_ENROLL_LOG }}
-
-        ockam identity create default
-        unbuffer bash -c "echo | ockam enroll --identity default" | tee $ockam_enroll_log  &
-        process_id=$!
-
-        while true; do
-          sleep 2
-          log=$(cat $ockam_enroll_log)
-
-          val=$(ps aux)
-
-          if ! ps aux | grep "ockam enroll" >/dev/null; then
-            cat $ockam_enroll_log
-            exit 1
-          fi
-
-          regex="([A-Z]+\-[A-Z]+)"
-          if [[ "$log" =~ $regex ]]; then
-            enroll_code="${BASH_REMATCH[1]}"
-            break
-          fi
-        done
-
-        echo "Enroll code is => $enroll_code"
-
-        if which docker; then
-          docker run --rm -e ACTIVATION_CODE="$enroll_code" -e SCRIPT_DIR="/artifacts-scripts" -e EMAIL_ADDRESS="${{ inputs.email_address }}" -e HOST_USER_ID=$(id -u) ${{ inputs.docker_image }} python3 /artifacts-scripts/ockam_enroll.py || (cat geckodriver.log && exit 1)
-        else
-          ACTIVATION_CODE="$enroll_code" SCRIPT_DIR="${{ inputs.script_path }}" EMAIL_ADDRESS="${{ inputs.email_address }}" python3 ${{ inputs.script_path }}/ockam_enroll.py || (cat geckodriver.log && exit 1)
-        fi
-
-        sleep 2
-        # Check for exit status
-        if ! wait $process_id; then
-          echo "Ockam enroll failed"
-          cat $ockam_enroll_log
-          exit 1
-        fi
-
-        echo "Ockam enroll was a success"
-        cat $ockam_enroll_log
-
-        echo "calling project list again"
-        ockam project list
-
-        echo "calling project ticket"
-        ockam project ticket --no-color --usage-count 1 --expires-in 10m --relay redpanda
+        
+        mkdir -p ~/.ockam
+        export OCKAM_HOME=~/.ockam
+        echo "OCKAM_HOME=$OCKAM_HOME"
+        ockam identity import ${{ inputs.ockam_identity }}
+        echo "OCKAM_ENROLL_LOG=$OCKAM_HOME" >> $GITHUB_ENV
 
     - shell: bash
       run: |
@@ -201,5 +155,7 @@ runs:
 
     - shell: bash
       run: |
+        set -ex
+        ockam space list --output json
         ockam project show
         ockam project ticket
